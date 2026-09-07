@@ -19,6 +19,9 @@ WHERE user_id = $1
 AND is_active = false
 AND disable_at > now() - interval '30 days';
 
+-- name: IsUserActive :one
+SELECT is_active FROM users WHERE user_id = $1;
+
 -- name: IsExistProfile :one
 SELECT EXISTS (SELECT 1 FROM profiles WHERE user_id = $1);
 

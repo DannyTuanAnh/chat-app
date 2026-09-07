@@ -23,7 +23,7 @@ message LoginRequest {
 message LoginResponse {
   bool success = 1;
   string session = 2;
-  int64 user_id = 3;
+  int32 user_id = 3;
 }
 
 message LogoutRequest {
@@ -39,7 +39,7 @@ message LogoutResponse {
 }
 
 message LogoutAllRequest {
-  int64 user_id = 1 [
+  int32 user_id = 1 [
     (buf.validate.field).required = true
   ];
 }
@@ -53,7 +53,7 @@ message DisableIdentityRequest {
   string provider = 1 [
     (buf.validate.field).required = true
   ];
-  int64 user_id = 2 [
+  int32 user_id = 2 [
     (buf.validate.field).required = true
   ];
 }

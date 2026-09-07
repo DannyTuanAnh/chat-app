@@ -12,16 +12,17 @@ import (
 )
 
 type Querier interface {
-	ActiveUser(ctx context.Context, userID int64) (pgconn.CommandTag, error)
+	ActiveUser(ctx context.Context, userID int32) (pgconn.CommandTag, error)
 	CreateProfile(ctx context.Context, arg CreateProfileParams) (Profile, error)
-	CreateUser(ctx context.Context, displayName string) (int64, error)
-	DeleteUser(ctx context.Context, userID int64) (pgconn.CommandTag, error)
-	DisableUser(ctx context.Context, userID int64) error
-	GetProfile(ctx context.Context, userID int64) (GetProfileRow, error)
+	CreateUser(ctx context.Context, displayName string) (int32, error)
+	DeleteUser(ctx context.Context, userID int32) (pgconn.CommandTag, error)
+	DisableUser(ctx context.Context, userID int32) error
+	GetProfile(ctx context.Context, userID int32) (GetProfileRow, error)
 	GetProfileByUserId(ctx context.Context, arg GetProfileByUserIdParams) (GetProfileByUserIdRow, error)
-	GetUUIDByUserId(ctx context.Context, userID int64) (uuid.UUID, error)
+	GetUUIDByUserId(ctx context.Context, userID int32) (uuid.UUID, error)
 	GetUserByUUID(ctx context.Context, targetUserUuid uuid.UUID) (GetUserByUUIDRow, error)
-	IsExistProfile(ctx context.Context, userID int64) (bool, error)
+	IsExistProfile(ctx context.Context, userID int32) (bool, error)
+	IsUserActive(ctx context.Context, userID int32) (bool, error)
 	UpdateProfileAvatarByUserId(ctx context.Context, arg UpdateProfileAvatarByUserIdParams) (UpdateProfileAvatarByUserIdRow, error)
 	UpdateProfileByUserId(ctx context.Context, arg UpdateProfileByUserIdParams) (UpdateProfileByUserIdRow, error)
 }

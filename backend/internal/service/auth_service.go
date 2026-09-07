@@ -66,7 +66,7 @@ func (s *authService) LoginGoogle(ctx context.Context, req *auth_proto.LoginRequ
 
 	name := fmt.Sprintf("%s %s", userInfo.Claims["family_name"].(string), userInfo.Claims["given_name"].(string))
 
-	var userID int64
+	var userID int32
 
 	respIsExistingIdentity, err := s.auth_repo.IsExistingIdentityID(ctx, sqlc.FindExistingIdentityParams{
 		Provider:       "google",

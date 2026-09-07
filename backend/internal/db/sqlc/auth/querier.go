@@ -18,12 +18,12 @@ type Querier interface {
 	// manage apikeys
 	CreateAPIKey(ctx context.Context, keyHash string) error
 	CreateIdentity(ctx context.Context, arg CreateIdentityParams) error
-	CreateSession(ctx context.Context, userID int64) (uuid.UUID, error)
+	CreateSession(ctx context.Context, userID int32) (uuid.UUID, error)
 	DisableIdentity(ctx context.Context, arg DisableIdentityParams) (pgconn.CommandTag, error)
 	FindExistingIdentity(ctx context.Context, arg FindExistingIdentityParams) (FindExistingIdentityRow, error)
 	RevokeAPIKeyByKey(ctx context.Context, keyHash string) error
 	RevokeAllAPIKeys(ctx context.Context) error
-	RevokeAllSessions(ctx context.Context, userID int64) error
+	RevokeAllSessions(ctx context.Context, userID int32) error
 	RevokeSession(ctx context.Context, sessionID uuid.UUID) error
 	ValidateAPIKey(ctx context.Context, keyHash string) (bool, error)
 }

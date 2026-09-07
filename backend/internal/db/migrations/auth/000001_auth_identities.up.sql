@@ -1,8 +1,8 @@
 create type auth_identity_status as enum ('active', 'revoked');
 
 create table if not exists auth_identities (
-    id bigserial primary key,
-    user_id bigint not null,
+    id serial primary key,
+    user_id int not null,
     provider varchar(50) not null,
     provider_user_id varchar(255) not null,
     status auth_identity_status not null default 'active',

@@ -88,3 +88,26 @@ func (fs *friendService) GetRelationship(ctx context.Context, req *friend_proto.
 
 	return nil, status.Errorf(codes.Internal, "Something went wrong while determining the relationship status, may be error in the table data relating to the relationship between users %d and %d, please try again later or contact support", req.CurrentUserId, req.TargetUserId)
 }
+
+func (fs *friendService) SendFriendRequest(ctx context.Context, req *friend_proto.SendFriendRequestRequest) (*friend_proto.SendFriendRequestResponse, error) {
+	if err := fs.validator.Validate(req); err != nil {
+		return nil, validation.BuildValidationError(err)
+	}
+
+	result, err := fs.friend_repo.CreateFriendRequest(ctx, sqlc.AddFriendByIdParams{
+		SenderUserID:   req.CurrentUserId,
+		ReceiverUserID: req.TargetUserId,
+	})
+
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "Failed to send friend request: %v", err)
+	}
+
+	if result.FStatus != true {
+		return nil, status.Errorf(codes.Internal, "Failed to send friend request: %s", result.FMessage)
+	}
+
+	return &friend_proto.SendFriendRequestResponse{
+		Success: true,
+	}, nil
+}

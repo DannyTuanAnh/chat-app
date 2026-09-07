@@ -106,7 +106,7 @@ func (h *AuthHandler) LogoutAll(ctx *gin.Context) {
 		return
 	}
 
-	id, ok := userID.(int64)
+	id, ok := userID.(int32)
 	if !ok {
 		utils.ResponseErrorAbort(ctx, utils.NewError("user_id in context has invalid type", utils.ErrCodeInternal))
 		return

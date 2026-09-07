@@ -48,7 +48,7 @@ func (h *UserHandler) GetProfile(ctx *gin.Context) {
 		return
 	}
 
-	userID, ok := userId.(int64)
+	userID, ok := userId.(int32)
 	if !ok {
 		utils.ResponseErrorAbort(ctx, utils.NewError("User ID in context has invalid type", utils.ErrCodeInternal))
 		return
@@ -107,7 +107,7 @@ func (h *UserHandler) GetProfileByUserID(ctx *gin.Context) {
 		return
 	}
 
-	currentUserIDInt, ok := currentUserID.(int64)
+	currentUserIDInt, ok := currentUserID.(int32)
 	if !ok {
 		utils.ResponseErrorAbort(ctx, utils.NewError("User ID in context has invalid type", utils.ErrCodeInternal))
 		return
@@ -120,7 +120,7 @@ func (h *UserHandler) GetProfileByUserID(ctx *gin.Context) {
 
 	resp, err := h.user_client.Client.GetProfileByUserID(ctx, &user_proto.GetProfileByUserIDRequest{
 		CurrentUserId: currentUserIDInt,
-		TargetUserId:  int64(params.ID),
+		TargetUserId:  params.ID,
 	})
 	if err != nil {
 		utils.WriteGRPCErrorToGin(ctx, err)
@@ -143,7 +143,7 @@ func (h *UserHandler) SearchUserByUUID(ctx *gin.Context) {
 		return
 	}
 
-	currentUserIDInt, ok := currentUserID.(int64)
+	currentUserIDInt, ok := currentUserID.(int32)
 	if !ok {
 		utils.ResponseErrorAbort(ctx, utils.NewError("User ID in context has invalid type", utils.ErrCodeInternal))
 		return
@@ -166,11 +166,6 @@ func (h *UserHandler) SearchUserByUUID(ctx *gin.Context) {
 	})
 	if err != nil {
 		utils.WriteGRPCErrorToGin(ctx, err)
-		return
-	}
-
-	if dataSearchUser.UserId == currentUserIDInt {
-		utils.ResponseErrorAbort(ctx, utils.NewError("Cannot search for yourself", utils.ErrCodeBadRequest))
 		return
 	}
 
@@ -209,7 +204,7 @@ func (h *UserHandler) UpdateProfile(ctx *gin.Context) {
 		return
 	}
 
-	userID, ok := userId.(int64)
+	userID, ok := userId.(int32)
 	if !ok {
 		utils.ResponseErrorAbort(ctx, utils.NewError("User ID in context has invalid type", utils.ErrCodeInternal))
 		return
@@ -306,7 +301,7 @@ func (h *UserHandler) DisableUser(ctx *gin.Context) {
 		utils.ResponseErrorAbort(ctx, utils.NewError("User ID not found in context", utils.ErrCodeNotFound))
 	}
 
-	userID, ok := userId.(int64)
+	userID, ok := userId.(int32)
 	if !ok {
 		utils.ResponseErrorAbort(ctx, utils.NewError("User ID in context has invalid type", utils.ErrCodeInternal))
 	}

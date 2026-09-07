@@ -20,8 +20,15 @@ export-db:
 	docker exec -i postgres-db-chat-app pg_dump -U root -d chat-app > ./backupdb-master-master-golang.sql
 
 # create new migration file (Example: make migrate-create name=profiles)
-migrate-create:
-	migrate create -ext sql -dir $(MIGRATION_DIRS) -seq $(name) 
+migrate-create-auth-db:
+	migrate create -ext sql -dir $(AUTH_MIGRATION_DIRS) -seq $(name)
+migrate-create-user-db:
+	migrate create -ext sql -dir $(USER_MIGRATION_DIRS) -seq $(name) 
+migrate-create-friend-db:
+	migrate create -ext sql -dir $(FRIEND_MIGRATION_DIRS) -seq $(name)
+migrate-create-chat-db:
+	migrate create -ext sql -dir $(CHAT_MIGRATION_DIRS) -seq $(name)
+
 
 # run all up migrations (Example: make migrate-up)
 migrate-up-auth-db: 

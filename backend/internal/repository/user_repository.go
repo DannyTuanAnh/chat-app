@@ -18,7 +18,7 @@ func NewUserRepository(db db.UserDB) UserRepository {
 	return &userRepository{user_repo: db}
 }
 
-func (ur *userRepository) CreateUser(ctx context.Context, displayName string) (int64, error) {
+func (ur *userRepository) CreateUser(ctx context.Context, displayName string) (int32, error) {
 	userID, err := ur.user_repo.DB.CreateUser(ctx, displayName)
 	if err != nil {
 		return 0, err
@@ -27,7 +27,7 @@ func (ur *userRepository) CreateUser(ctx context.Context, displayName string) (i
 	return userID, nil
 }
 
-func (ur *userRepository) DeleteUserByUserID(ctx context.Context, userId int64) error {
+func (ur *userRepository) DeleteUserByUserID(ctx context.Context, userId int32) error {
 	result, err := ur.user_repo.DB.DeleteUser(ctx, userId)
 	if err != nil {
 		return err
@@ -40,7 +40,7 @@ func (ur *userRepository) DeleteUserByUserID(ctx context.Context, userId int64) 
 	return nil
 }
 
-func (ur *userRepository) ActiveUser(ctx context.Context, userId int64) error {
+func (ur *userRepository) ActiveUser(ctx context.Context, userId int32) error {
 	result, err := ur.user_repo.DB.ActiveUser(ctx, userId)
 	if err != nil {
 		return err
@@ -53,7 +53,7 @@ func (ur *userRepository) ActiveUser(ctx context.Context, userId int64) error {
 	return nil
 }
 
-func (ur *userRepository) IsExistProfile(ctx context.Context, userId int64) (bool, error) {
+func (ur *userRepository) IsExistProfile(ctx context.Context, userId int32) (bool, error) {
 	exists, err := ur.user_repo.DB.IsExistProfile(ctx, userId)
 	if err != nil {
 		return false, err
@@ -62,7 +62,7 @@ func (ur *userRepository) IsExistProfile(ctx context.Context, userId int64) (boo
 	return exists, nil
 }
 
-func (ur *userRepository) GetProfile(ctx context.Context, userId int64) (sqlc.GetProfileRow, error) {
+func (ur *userRepository) GetProfile(ctx context.Context, userId int32) (sqlc.GetProfileRow, error) {
 	row, err := ur.user_repo.DB.GetProfile(ctx, userId)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -113,6 +113,6 @@ func (ur *userRepository) UpdateProfile(ctx context.Context, arg sqlc.UpdateProf
 	return ur.user_repo.DB.UpdateProfileByUserId(ctx, arg)
 }
 
-func (ur *userRepository) DisableUserByUserID(ctx context.Context, userId int64) error {
+func (ur *userRepository) DisableUserByUserID(ctx context.Context, userId int32) error {
 	return ur.user_repo.DB.DisableUser(ctx, userId)
 }

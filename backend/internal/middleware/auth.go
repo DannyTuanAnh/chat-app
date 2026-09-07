@@ -26,7 +26,7 @@ const (
 
 func AuthMiddleware(db sqlc.Querier, rdb *redis.Client) gin.HandlerFunc {
 	return func(ctx *gin.Context) {
-		var userId int64
+		var userId int32
 		var userUUID uuid.UUID
 
 		sessionId, err, errCode := ValidateSession(ctx)

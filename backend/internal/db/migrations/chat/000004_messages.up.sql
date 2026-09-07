@@ -4,7 +4,7 @@ create table if not exists messages (
     id bigserial primary key,
     uuid uuid not null unique default gen_random_uuid(),
     conversation_id bigint not null,
-    sender_id bigint not null,
+    sender_id int not null,
     content text not null,
     sent_at timestamptz not null default now(),
     

@@ -19,14 +19,14 @@ returning id, sender_id, conversation_id, content, sent_at
 `
 
 type CreateMessageParams struct {
-	SenderID       int64  `json:"sender_id"`
+	SenderID       int32  `json:"sender_id"`
 	ConversationID int64  `json:"conversation_id"`
 	Content        string `json:"content"`
 }
 
 type CreateMessageRow struct {
 	ID             int64     `json:"id"`
-	SenderID       int64     `json:"sender_id"`
+	SenderID       int32     `json:"sender_id"`
 	ConversationID int64     `json:"conversation_id"`
 	Content        string    `json:"content"`
 	SentAt         time.Time `json:"sent_at"`
@@ -54,8 +54,8 @@ returning id, conversation_id, event_type, actor_id, target_id, content, created
 type CreateSystemMessageParams struct {
 	ConversationID int64           `json:"conversation_id"`
 	EventType      SystemEventType `json:"event_type"`
-	ActorID        pgtype.Int8     `json:"actor_id"`
-	TargetID       pgtype.Int8     `json:"target_id"`
+	ActorID        pgtype.Int4     `json:"actor_id"`
+	TargetID       pgtype.Int4     `json:"target_id"`
 	Content        pgtype.Text     `json:"content"`
 }
 
@@ -63,8 +63,8 @@ type CreateSystemMessageRow struct {
 	ID             int64           `json:"id"`
 	ConversationID int64           `json:"conversation_id"`
 	EventType      SystemEventType `json:"event_type"`
-	ActorID        pgtype.Int8     `json:"actor_id"`
-	TargetID       pgtype.Int8     `json:"target_id"`
+	ActorID        pgtype.Int4     `json:"actor_id"`
+	TargetID       pgtype.Int4     `json:"target_id"`
 	Content        pgtype.Text     `json:"content"`
 	CreatedAt      time.Time       `json:"created_at"`
 }
@@ -118,7 +118,7 @@ where m.conversation_id = $1
 
 type MarkMessagesAsReadParams struct {
 	ConversationID int64 `json:"conversation_id"`
-	UserID         int64 `json:"user_id"`
+	UserID         int32 `json:"user_id"`
 }
 
 // -- name: GetAllConversations :many

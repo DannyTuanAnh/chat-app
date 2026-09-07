@@ -63,6 +63,7 @@ func NewApplication(ctx context.Context, db sqlc_auth.Querier, rdb *redis.Client
 	modules := []ModelHTTP{
 		NewAuthModule(cfg.Service.AuthServiceAddr),
 		NewUserModule(cfg.Service.UserServiceAddr, cfg.Service.FriendServiceAddr, ctx, rdb),
+		NewFriendModule(cfg.Service.FriendServiceAddr, ctx),
 		NewNotifyModule(cfg.Service.UserServiceAddr),
 	}
 

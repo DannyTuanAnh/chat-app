@@ -1,5 +1,5 @@
 -- name: AddFriendById :one
-select f.status::boolean, f.message::text from send_friend_request($1, $2) as f;
+select f.status::boolean, f.message::text from send_friend_request(sqlc.arg(sender_user_id), sqlc.arg(receiver_user_id)) as f;
 
 -- -- name: GetPendingFriendRequests :many
 -- select fr.request_id, u.uuid, p.name, p.avatar_url, fr.send_at
@@ -80,3 +80,22 @@ left join friendships f
     on (f.user1_id = LEAST(sqlc.arg(current_user_id), sqlc.arg(target_user_id)) and f.user2_id = GREATEST(sqlc.arg(current_user_id), sqlc.arg(target_user_id)))
 
 where sqlc.arg(target_user_id) <> sqlc.arg(current_user_id);  
+
+-- name: SaveUserStatus :execresult
+insert into user_status (
+    user_id,
+    status,
+    updated_at
+)
+values ($1, $2, $3)
+on conflict (user_id)
+do update set
+    status = excluded.status,
+    updated_at = excluded.updated_at
+where user_status.updated_at < excluded.updated_at;
+    
+-- name: DeleteUserStatus :exec
+delete from user_status where user_id = $1;
+
+-- name: GetDisabledUser :one
+select user_id, status, updated_at from user_status where user_id = $1;

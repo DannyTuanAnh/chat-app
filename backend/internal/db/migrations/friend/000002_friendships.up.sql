@@ -1,6 +1,6 @@
 create table if not exists friendships (
-    user1_id bigint not null,
-    user2_id bigint not null,
+    user1_id int not null,
+    user2_id int not null,
     established_at timestamptz not null default now(),
 
     primary key (user1_id, user2_id),

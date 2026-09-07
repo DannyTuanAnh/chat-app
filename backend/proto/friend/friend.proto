@@ -8,21 +8,38 @@ option go_package = "internal/gen-proto/friend;friend_proto";
 
 service FriendService {
     rpc GetRelationship(GetRelationshipRequest) returns (GetRelationshipResponse);
+    rpc SendFriendRequest(SendFriendRequestRequest) returns (SendFriendRequestResponse);
 }
 
 message GetRelationshipRequest {
-    int64 current_user_id = 1 [
+    int32 current_user_id = 1 [
         (buf.validate.field).required = true,
-        (buf.validate.field).int64.gt = 0
+        (buf.validate.field).int32.gt = 0
     ];
 
-    int64 target_user_id = 2 [
+    int32 target_user_id = 2 [
         (buf.validate.field).required = true,
-        (buf.validate.field).int64.gt = 0
+        (buf.validate.field).int32.gt = 0
     ];
 }
 
 message GetRelationshipResponse {
     bool is_friend = 1;
     optional string friend_request_direction = 2;
+}
+
+message SendFriendRequestRequest {
+    int32 current_user_id = 1 [
+        (buf.validate.field).required = true,
+        (buf.validate.field).int32.gt = 0
+    ];
+
+    int32 target_user_id = 2 [
+        (buf.validate.field).required = true,
+        (buf.validate.field).int32.gt = 0
+    ];
+}
+
+message SendFriendRequestResponse {
+    bool success = 1;
 }

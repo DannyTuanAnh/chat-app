@@ -18,7 +18,7 @@ INSERT INTO profiles (user_id, name, email, birthday, avatar_url) VALUES ($1, $2
 `
 
 type CreateProfileParams struct {
-	UserID    int64       `json:"user_id"`
+	UserID    int32       `json:"user_id"`
 	Name      string      `json:"name"`
 	Email     pgtype.Text `json:"email"`
 	Birthday  pgtype.Date `json:"birthday"`
@@ -55,7 +55,7 @@ WHERE p.user_id = $1 AND u.is_active = true
 `
 
 type GetProfileRow struct {
-	UserID        int64       `json:"user_id"`
+	UserID        int32       `json:"user_id"`
 	Name          string      `json:"name"`
 	Email         pgtype.Text `json:"email"`
 	Phone         pgtype.Text `json:"phone"`
@@ -66,7 +66,7 @@ type GetProfileRow struct {
 	Uuid          uuid.UUID   `json:"uuid"`
 }
 
-func (q *Queries) GetProfile(ctx context.Context, userID int64) (GetProfileRow, error) {
+func (q *Queries) GetProfile(ctx context.Context, userID int32) (GetProfileRow, error) {
 	row := q.db.QueryRow(ctx, getProfile, userID)
 	var i GetProfileRow
 	err := row.Scan(
@@ -96,12 +96,12 @@ WHERE p.user_id = $1 AND u.is_active = true AND p.user_id <> $2
 `
 
 type GetProfileByUserIdParams struct {
-	TargetUserID  int64 `json:"target_user_id"`
-	CurrentUserID int64 `json:"current_user_id"`
+	TargetUserID  int32 `json:"target_user_id"`
+	CurrentUserID int32 `json:"current_user_id"`
 }
 
 type GetProfileByUserIdRow struct {
-	UserID        int64       `json:"user_id"`
+	UserID        int32       `json:"user_id"`
 	Name          string      `json:"name"`
 	Birthday      pgtype.Date `json:"birthday"`
 	AvatarUrl     pgtype.Text `json:"avatar_url"`
@@ -142,12 +142,12 @@ RETURNING p.user_id, u.uuid, p.name, p.email, p.phone, p.birthday, p.avatar_url,
 `
 
 type UpdateProfileAvatarByUserIdParams struct {
-	UserID    int64       `json:"user_id"`
+	UserID    int32       `json:"user_id"`
 	AvatarUrl pgtype.Text `json:"avatar_url"`
 }
 
 type UpdateProfileAvatarByUserIdRow struct {
-	UserID        int64       `json:"user_id"`
+	UserID        int32       `json:"user_id"`
 	Uuid          uuid.UUID   `json:"uuid"`
 	Name          string      `json:"name"`
 	Email         pgtype.Text `json:"email"`
@@ -188,14 +188,14 @@ RETURNING p.user_id, u.uuid, p.name, p.email, p.phone, p.birthday, p.avatar_url,
 `
 
 type UpdateProfileByUserIdParams struct {
-	UserID   int64       `json:"user_id"`
+	UserID   int32       `json:"user_id"`
 	Name     pgtype.Text `json:"name"`
 	Birthday pgtype.Date `json:"birthday"`
 	Phone    pgtype.Text `json:"phone"`
 }
 
 type UpdateProfileByUserIdRow struct {
-	UserID        int64       `json:"user_id"`
+	UserID        int32       `json:"user_id"`
 	Uuid          uuid.UUID   `json:"uuid"`
 	Name          string      `json:"name"`
 	Email         pgtype.Text `json:"email"`

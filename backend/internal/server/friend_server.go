@@ -26,6 +26,9 @@ var friendPolicies = map[string][]string{
 	"/proto.FriendService/GetRelationship": {
 		os.Getenv("API_GATEWAY_NAME"),
 	},
+	"/proto.FriendService/SendFriendRequest": {
+		os.Getenv("API_GATEWAY_NAME"),
+	},
 }
 
 type FriendServer struct {
@@ -103,8 +106,10 @@ func NewFriendServer(ctx context.Context, db db.FriendDB) (*FriendServer, error)
 	s := grpc.NewServer(
 		grpc.Creds(credentials.NewTLS(tlsConfig)),
 		grpc.ChainUnaryInterceptor(
+			interceptor.IdentityInterceptor(),
 			interceptor.MTLSIdentityInterceptor(),
 			interceptor.RBACInterceptor(friendPolicies),
+			interceptor.ActiveUserInterceptor(friend_repo),
 		),
 	)
 

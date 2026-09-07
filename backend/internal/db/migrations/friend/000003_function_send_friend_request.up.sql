@@ -1,4 +1,4 @@
-create or replace function send_friend_request(p_sender_id bigint, p_receiver_id bigint)
+create or replace function send_friend_request(p_sender_id int, p_receiver_id int)
 returns table (
     status boolean,
     message text
@@ -6,7 +6,7 @@ returns table (
 language plpgsql
 as $$
 declare
-    v_existing_sender bigint;
+    v_existing_sender int;
 begin
 
     status := false;
@@ -16,6 +16,8 @@ begin
         return next;
         return;
     end if;
+
+    perform pg_advisory_xact_lock(least(p_sender_id, p_receiver_id), greatest(p_sender_id, p_receiver_id));
 
     -- 1. check friendship
     if exists (
@@ -38,7 +40,7 @@ begin
 
         select sender_id into v_existing_sender 
         from friend_requests 
-        where sender_id = p_receiver_id and receiver_id = p_sender_id and status = 'pending'
+        where sender_id = p_receiver_id and receiver_id = p_sender_id and is_accepted = false
         limit 1;
         if v_existing_sender = p_receiver_id then
             message := 'This person has already sent you a friend request';

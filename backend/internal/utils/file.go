@@ -35,7 +35,7 @@ var (
 
 var maxImageFileSize = int64(GetEnvInt("MAX_IMAGE_SIZE", 5)) << 20 // 5 MB
 
-func ValidateAndReturnObjNameImage(userID int64, fileHeader *multipart.FileHeader) (multipart.File, string, error) {
+func ValidateAndReturnObjNameImage(userID int32, fileHeader *multipart.FileHeader) (multipart.File, string, error) {
 	// 1. Validate filename - prevent path traversal and invalid characters
 	// Prevent path separator (both / and \)
 	if strings.ContainsAny(fileHeader.Filename, "/\\") {

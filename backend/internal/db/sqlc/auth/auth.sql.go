@@ -37,7 +37,7 @@ where session_id = $1
 `
 
 type CheckSessionRow struct {
-	UserID   int64              `json:"user_id"`
+	UserID   int32              `json:"user_id"`
 	Revoked  bool               `json:"revoked"`
 	RevokeAt pgtype.Timestamptz `json:"revoke_at"`
 }
@@ -74,7 +74,7 @@ values ($1, $2, $3, $4)
 `
 
 type CreateIdentityParams struct {
-	UserID         int64       `json:"user_id"`
+	UserID         int32       `json:"user_id"`
 	Provider       string      `json:"provider"`
 	ProviderUserID string      `json:"provider_user_id"`
 	Email          pgtype.Text `json:"email"`
@@ -94,7 +94,7 @@ const createSession = `-- name: CreateSession :one
 insert into sessions (user_id) values ($1) returning session_id
 `
 
-func (q *Queries) CreateSession(ctx context.Context, userID int64) (uuid.UUID, error) {
+func (q *Queries) CreateSession(ctx context.Context, userID int32) (uuid.UUID, error) {
 	row := q.db.QueryRow(ctx, createSession, userID)
 	var session_id uuid.UUID
 	err := row.Scan(&session_id)
@@ -107,7 +107,7 @@ update auth_identities set status = 'revoked', revoked_at = now() where provider
 
 type DisableIdentityParams struct {
 	Provider string `json:"provider"`
-	UserID   int64  `json:"user_id"`
+	UserID   int32  `json:"user_id"`
 }
 
 func (q *Queries) DisableIdentity(ctx context.Context, arg DisableIdentityParams) (pgconn.CommandTag, error) {
@@ -125,7 +125,7 @@ type FindExistingIdentityParams struct {
 }
 
 type FindExistingIdentityRow struct {
-	UserID    int64              `json:"user_id"`
+	UserID    int32              `json:"user_id"`
 	Status    AuthIdentityStatus `json:"status"`
 	RevokedAt pgtype.Timestamptz `json:"revoked_at"`
 }
@@ -159,7 +159,7 @@ const revokeAllSessions = `-- name: RevokeAllSessions :exec
 update sessions set revoked = true, revoke_at = now() where user_id = $1
 `
 
-func (q *Queries) RevokeAllSessions(ctx context.Context, userID int64) error {
+func (q *Queries) RevokeAllSessions(ctx context.Context, userID int32) error {
 	_, err := q.db.Exec(ctx, revokeAllSessions, userID)
 	return err
 }

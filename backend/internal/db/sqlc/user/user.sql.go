@@ -20,7 +20,7 @@ AND is_active = false
 AND disable_at > now() - interval '30 days'
 `
 
-func (q *Queries) ActiveUser(ctx context.Context, userID int64) (pgconn.CommandTag, error) {
+func (q *Queries) ActiveUser(ctx context.Context, userID int32) (pgconn.CommandTag, error) {
 	return q.db.Exec(ctx, activeUser, userID)
 }
 
@@ -28,9 +28,9 @@ const createUser = `-- name: CreateUser :one
 INSERT INTO users (display_name) VALUES ($1) RETURNING user_id
 `
 
-func (q *Queries) CreateUser(ctx context.Context, displayName string) (int64, error) {
+func (q *Queries) CreateUser(ctx context.Context, displayName string) (int32, error) {
 	row := q.db.QueryRow(ctx, createUser, displayName)
-	var user_id int64
+	var user_id int32
 	err := row.Scan(&user_id)
 	return user_id, err
 }
@@ -39,7 +39,7 @@ const deleteUser = `-- name: DeleteUser :execresult
 DELETE FROM users WHERE user_id = $1
 `
 
-func (q *Queries) DeleteUser(ctx context.Context, userID int64) (pgconn.CommandTag, error) {
+func (q *Queries) DeleteUser(ctx context.Context, userID int32) (pgconn.CommandTag, error) {
 	return q.db.Exec(ctx, deleteUser, userID)
 }
 
@@ -47,7 +47,7 @@ const disableUser = `-- name: DisableUser :exec
 UPDATE users SET is_active = false, disable_at = now() WHERE user_id = $1
 `
 
-func (q *Queries) DisableUser(ctx context.Context, userID int64) error {
+func (q *Queries) DisableUser(ctx context.Context, userID int32) error {
 	_, err := q.db.Exec(ctx, disableUser, userID)
 	return err
 }
@@ -56,7 +56,7 @@ const getUUIDByUserId = `-- name: GetUUIDByUserId :one
 SELECT uuid FROM users WHERE user_id = $1
 `
 
-func (q *Queries) GetUUIDByUserId(ctx context.Context, userID int64) (uuid.UUID, error) {
+func (q *Queries) GetUUIDByUserId(ctx context.Context, userID int32) (uuid.UUID, error) {
 	row := q.db.QueryRow(ctx, getUUIDByUserId, userID)
 	var uuid uuid.UUID
 	err := row.Scan(&uuid)
@@ -80,7 +80,7 @@ WHERE u.uuid = $1
 `
 
 type GetUserByUUIDRow struct {
-	UserID        int64       `json:"user_id"`
+	UserID        int32       `json:"user_id"`
 	Name          pgtype.Text `json:"name"`
 	IsActive      bool        `json:"is_active"`
 	AvatarUrl     pgtype.Text `json:"avatar_url"`
@@ -104,9 +104,20 @@ const isExistProfile = `-- name: IsExistProfile :one
 SELECT EXISTS (SELECT 1 FROM profiles WHERE user_id = $1)
 `
 
-func (q *Queries) IsExistProfile(ctx context.Context, userID int64) (bool, error) {
+func (q *Queries) IsExistProfile(ctx context.Context, userID int32) (bool, error) {
 	row := q.db.QueryRow(ctx, isExistProfile, userID)
 	var exists bool
 	err := row.Scan(&exists)
 	return exists, err
+}
+
+const isUserActive = `-- name: IsUserActive :one
+SELECT is_active FROM users WHERE user_id = $1
+`
+
+func (q *Queries) IsUserActive(ctx context.Context, userID int32) (bool, error) {
+	row := q.db.QueryRow(ctx, isUserActive, userID)
+	var is_active bool
+	err := row.Scan(&is_active)
+	return is_active, err
 }

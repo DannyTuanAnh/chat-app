@@ -18,8 +18,8 @@ create table if not exists system_messages (
     uuid uuid not null unique default gen_random_uuid(),
     conversation_id bigint not null,
     event_type system_event_type not null,
-    actor_id bigint,
-    target_id bigint,
+    actor_id int,
+    target_id int,
     content text,
     created_at timestamptz not null default now(),
     

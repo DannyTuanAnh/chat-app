@@ -7,7 +7,9 @@ package sqlc
 
 import (
 	"context"
+	"time"
 
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
@@ -23,13 +25,13 @@ returning conversation_id, user_id, role
 
 type AddGroupMembersParams struct {
 	ConversationID int64 `json:"conversation_id"`
-	UserID         int64 `json:"user_id"`
-	UserID_2       int64 `json:"user_id_2"`
+	UserID         int32 `json:"user_id"`
+	UserID_2       int32 `json:"user_id_2"`
 }
 
 type AddGroupMembersRow struct {
 	ConversationID int64      `json:"conversation_id"`
-	UserID         int64      `json:"user_id"`
+	UserID         int32      `json:"user_id"`
 	Role           MemberRole `json:"role"`
 }
 
@@ -37,6 +39,26 @@ func (q *Queries) AddGroupMembers(ctx context.Context, arg AddGroupMembersParams
 	row := q.db.QueryRow(ctx, addGroupMembers, arg.ConversationID, arg.UserID, arg.UserID_2)
 	var i AddGroupMembersRow
 	err := row.Scan(&i.ConversationID, &i.UserID, &i.Role)
+	return i, err
+}
+
+const deleteUserStatus = `-- name: DeleteUserStatus :exec
+delete from user_status where user_id = $1
+`
+
+func (q *Queries) DeleteUserStatus(ctx context.Context, userID int32) error {
+	_, err := q.db.Exec(ctx, deleteUserStatus, userID)
+	return err
+}
+
+const getDisabledUser = `-- name: GetDisabledUser :one
+select user_id, status, updated_at from user_status where user_id = $1
+`
+
+func (q *Queries) GetDisabledUser(ctx context.Context, userID int32) (UserStatus, error) {
+	row := q.db.QueryRow(ctx, getDisabledUser, userID)
+	var i UserStatus
+	err := row.Scan(&i.UserID, &i.Status, &i.UpdatedAt)
 	return i, err
 }
 
@@ -48,12 +70,12 @@ returning conversation_id, user_id
 
 type LeaveConversationParams struct {
 	ConversationID int64 `json:"conversation_id"`
-	UserID         int64 `json:"user_id"`
+	UserID         int32 `json:"user_id"`
 }
 
 type LeaveConversationRow struct {
 	ConversationID int64 `json:"conversation_id"`
-	UserID         int64 `json:"user_id"`
+	UserID         int32 `json:"user_id"`
 }
 
 func (q *Queries) LeaveConversation(ctx context.Context, arg LeaveConversationParams) (LeaveConversationRow, error) {
@@ -74,13 +96,37 @@ and exists (
 
 type RemoveGroupMembersParams struct {
 	ConversationID int64 `json:"conversation_id"`
-	UserID         int64 `json:"user_id"`
-	UserID_2       int64 `json:"user_id_2"`
+	UserID         int32 `json:"user_id"`
+	UserID_2       int32 `json:"user_id_2"`
 }
 
 func (q *Queries) RemoveGroupMembers(ctx context.Context, arg RemoveGroupMembersParams) error {
 	_, err := q.db.Exec(ctx, removeGroupMembers, arg.ConversationID, arg.UserID, arg.UserID_2)
 	return err
+}
+
+const saveUserStatus = `-- name: SaveUserStatus :execresult
+insert into user_status (
+    user_id,
+    status,
+    updated_at
+)
+values ($1, $2, $3)
+on conflict (user_id)
+do update set
+    status = excluded.status,
+    updated_at = excluded.updated_at
+where user_status.updated_at < excluded.updated_at
+`
+
+type SaveUserStatusParams struct {
+	UserID    int32     `json:"user_id"`
+	Status    int16     `json:"status"`
+	UpdatedAt time.Time `json:"updated_at"`
+}
+
+func (q *Queries) SaveUserStatus(ctx context.Context, arg SaveUserStatusParams) (pgconn.CommandTag, error) {
+	return q.db.Exec(ctx, saveUserStatus, arg.UserID, arg.Status, arg.UpdatedAt)
 }
 
 const updateGroupInfo = `-- name: UpdateGroupInfo :one

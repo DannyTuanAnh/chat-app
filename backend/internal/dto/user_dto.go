@@ -7,7 +7,7 @@ import (
 )
 
 type GetProfileByUserID struct {
-	ID int `uri:"id" binding:"required,gt=0"`
+	ID int32 `uri:"id" binding:"required,min=1"`
 }
 
 type SearchUserByUUIDRequest struct {
@@ -15,7 +15,7 @@ type SearchUserByUUIDRequest struct {
 }
 
 type SearchUserByUUIDResponse struct {
-	UserID                 int64   `json:"user_id"`
+	UserID                 int32   `json:"user_id"`
 	Name                   string  `json:"name"`
 	AvatarUrl              *string `json:"avatar_url"`
 	IsFriend               bool    `json:"is_friend"`

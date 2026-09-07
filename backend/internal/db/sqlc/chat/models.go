@@ -155,7 +155,7 @@ type Conversation struct {
 
 type ConversationMember struct {
 	ConversationID int64      `json:"conversation_id"`
-	UserID         int64      `json:"user_id"`
+	UserID         int32      `json:"user_id"`
 	Role           MemberRole `json:"role"`
 	JoinedAt       time.Time  `json:"joined_at"`
 }
@@ -171,14 +171,14 @@ type Message struct {
 	ID             int64     `json:"id"`
 	Uuid           uuid.UUID `json:"uuid"`
 	ConversationID int64     `json:"conversation_id"`
-	SenderID       int64     `json:"sender_id"`
+	SenderID       int32     `json:"sender_id"`
 	Content        string    `json:"content"`
 	SentAt         time.Time `json:"sent_at"`
 }
 
 type MessageRead struct {
 	MessageID int64     `json:"message_id"`
-	UserID    int64     `json:"user_id"`
+	UserID    int32     `json:"user_id"`
 	ReadAt    time.Time `json:"read_at"`
 }
 
@@ -187,8 +187,14 @@ type SystemMessage struct {
 	Uuid           uuid.UUID       `json:"uuid"`
 	ConversationID int64           `json:"conversation_id"`
 	EventType      SystemEventType `json:"event_type"`
-	ActorID        pgtype.Int8     `json:"actor_id"`
-	TargetID       pgtype.Int8     `json:"target_id"`
+	ActorID        pgtype.Int4     `json:"actor_id"`
+	TargetID       pgtype.Int4     `json:"target_id"`
 	Content        pgtype.Text     `json:"content"`
 	CreatedAt      time.Time       `json:"created_at"`
+}
+
+type UserStatus struct {
+	UserID    int32     `json:"user_id"`
+	Status    int16     `json:"status"`
+	UpdatedAt time.Time `json:"updated_at"`
 }

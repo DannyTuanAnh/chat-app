@@ -6,12 +6,16 @@ package sqlc
 
 import (
 	"context"
+
+	"github.com/jackc/pgx/v5/pgconn"
 )
 
 type Querier interface {
 	AddGroupMembers(ctx context.Context, arg AddGroupMembersParams) (AddGroupMembersRow, error)
 	CreateMessage(ctx context.Context, arg CreateMessageParams) (CreateMessageRow, error)
 	CreateSystemMessage(ctx context.Context, arg CreateSystemMessageParams) (CreateSystemMessageRow, error)
+	DeleteUserStatus(ctx context.Context, userID int32) error
+	GetDisabledUser(ctx context.Context, userID int32) (UserStatus, error)
 	LeaveConversation(ctx context.Context, arg LeaveConversationParams) (LeaveConversationRow, error)
 	// -- name: GetAllConversations :many
 	// with user_conversations as (
@@ -173,6 +177,7 @@ type Querier interface {
 	// limit $4;
 	MarkMessagesAsRead(ctx context.Context, arg MarkMessagesAsReadParams) error
 	RemoveGroupMembers(ctx context.Context, arg RemoveGroupMembersParams) error
+	SaveUserStatus(ctx context.Context, arg SaveUserStatusParams) (pgconn.CommandTag, error)
 	// -- name: GetGroupMembers :many
 	// select
 	//     u.uuid,

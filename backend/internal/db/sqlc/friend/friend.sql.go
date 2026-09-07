@@ -7,6 +7,9 @@ package sqlc
 
 import (
 	"context"
+	"time"
+
+	"github.com/jackc/pgx/v5/pgconn"
 )
 
 const addFriendById = `-- name: AddFriendById :one
@@ -14,8 +17,8 @@ select f.status::boolean, f.message::text from send_friend_request($1, $2) as f
 `
 
 type AddFriendByIdParams struct {
-	PSenderID   int64 `json:"p_sender_id"`
-	PReceiverID int64 `json:"p_receiver_id"`
+	SenderUserID   int32 `json:"sender_user_id"`
+	ReceiverUserID int32 `json:"receiver_user_id"`
 }
 
 type AddFriendByIdRow struct {
@@ -24,9 +27,29 @@ type AddFriendByIdRow struct {
 }
 
 func (q *Queries) AddFriendById(ctx context.Context, arg AddFriendByIdParams) (AddFriendByIdRow, error) {
-	row := q.db.QueryRow(ctx, addFriendById, arg.PSenderID, arg.PReceiverID)
+	row := q.db.QueryRow(ctx, addFriendById, arg.SenderUserID, arg.ReceiverUserID)
 	var i AddFriendByIdRow
 	err := row.Scan(&i.FStatus, &i.FMessage)
+	return i, err
+}
+
+const deleteUserStatus = `-- name: DeleteUserStatus :exec
+delete from user_status where user_id = $1
+`
+
+func (q *Queries) DeleteUserStatus(ctx context.Context, userID int32) error {
+	_, err := q.db.Exec(ctx, deleteUserStatus, userID)
+	return err
+}
+
+const getDisabledUser = `-- name: GetDisabledUser :one
+select user_id, status, updated_at from user_status where user_id = $1
+`
+
+func (q *Queries) GetDisabledUser(ctx context.Context, userID int32) (UserStatus, error) {
+	row := q.db.QueryRow(ctx, getDisabledUser, userID)
+	var i UserStatus
+	err := row.Scan(&i.UserID, &i.Status, &i.UpdatedAt)
 	return i, err
 }
 
@@ -52,12 +75,12 @@ where $2 <> $1
 `
 
 type GetInfoRelationshipParams struct {
-	CurrentUserID int64 `json:"current_user_id"`
-	TargetUserID  int64 `json:"target_user_id"`
+	CurrentUserID int32 `json:"current_user_id"`
+	TargetUserID  int32 `json:"target_user_id"`
 }
 
 type GetInfoRelationshipRow struct {
-	SenderID   *int64 `json:"sender_id"`
+	SenderID   *int32 `json:"sender_id"`
 	IsAccepted *bool  `json:"is_accepted"`
 	IsFriend   bool   `json:"is_friend"`
 }
@@ -84,8 +107,8 @@ where request_id = $1 and receiver_id = $2 and status = 'pending'
 `
 
 type RejectFriendRequestByIdParams struct {
-	RequestID  int64 `json:"request_id"`
-	ReceiverID int64 `json:"receiver_id"`
+	RequestID  int32 `json:"request_id"`
+	ReceiverID int32 `json:"receiver_id"`
 }
 
 // -- name: GetPendingFriendRequests :many
@@ -146,4 +169,28 @@ type RejectFriendRequestByIdParams struct {
 func (q *Queries) RejectFriendRequestById(ctx context.Context, arg RejectFriendRequestByIdParams) error {
 	_, err := q.db.Exec(ctx, rejectFriendRequestById, arg.RequestID, arg.ReceiverID)
 	return err
+}
+
+const saveUserStatus = `-- name: SaveUserStatus :execresult
+insert into user_status (
+    user_id,
+    status,
+    updated_at
+)
+values ($1, $2, $3)
+on conflict (user_id)
+do update set
+    status = excluded.status,
+    updated_at = excluded.updated_at
+where user_status.updated_at < excluded.updated_at
+`
+
+type SaveUserStatusParams struct {
+	UserID    int32     `json:"user_id"`
+	Status    int16     `json:"status"`
+	UpdatedAt time.Time `json:"updated_at"`
+}
+
+func (q *Queries) SaveUserStatus(ctx context.Context, arg SaveUserStatusParams) (pgconn.CommandTag, error) {
+	return q.db.Exec(ctx, saveUserStatus, arg.UserID, arg.Status, arg.UpdatedAt)
 }

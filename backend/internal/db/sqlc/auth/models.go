@@ -56,7 +56,7 @@ func (ns NullAuthIdentityStatus) Value() (driver.Value, error) {
 }
 
 type ApiKey struct {
-	ID        int64              `json:"id"`
+	ID        int32              `json:"id"`
 	KeyHash   string             `json:"key_hash"`
 	IsActive  bool               `json:"is_active"`
 	CreatedAt time.Time          `json:"created_at"`
@@ -64,8 +64,8 @@ type ApiKey struct {
 }
 
 type AuthIdentity struct {
-	ID             int64              `json:"id"`
-	UserID         int64              `json:"user_id"`
+	ID             int32              `json:"id"`
+	UserID         int32              `json:"user_id"`
 	Provider       string             `json:"provider"`
 	ProviderUserID string             `json:"provider_user_id"`
 	Status         AuthIdentityStatus `json:"status"`
@@ -76,7 +76,7 @@ type AuthIdentity struct {
 
 type Session struct {
 	SessionID uuid.UUID          `json:"session_id"`
-	UserID    int64              `json:"user_id"`
+	UserID    int32              `json:"user_id"`
 	Revoked   bool               `json:"revoked"`
 	RevokeAt  pgtype.Timestamptz `json:"revoke_at"`
 	CreatedAt time.Time          `json:"created_at"`

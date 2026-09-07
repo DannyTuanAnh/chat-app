@@ -12,7 +12,7 @@ import (
 )
 
 type Profile struct {
-	UserID        int64       `json:"user_id"`
+	UserID        int32       `json:"user_id"`
 	Name          string      `json:"name"`
 	Email         pgtype.Text `json:"email"`
 	Phone         pgtype.Text `json:"phone"`
@@ -23,7 +23,7 @@ type Profile struct {
 }
 
 type User struct {
-	UserID      int64              `json:"user_id"`
+	UserID      int32              `json:"user_id"`
 	Uuid        uuid.UUID          `json:"uuid"`
 	DisplayName string             `json:"display_name"`
 	CreatedAt   time.Time          `json:"created_at"`

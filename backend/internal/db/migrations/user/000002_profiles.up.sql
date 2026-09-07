@@ -1,5 +1,5 @@
 create table if not exists profiles(
-    user_id bigint primary key,
+    user_id int primary key,
     name varchar(50) not null,
     email varchar(255),
     phone varchar(20) unique,

@@ -1,7 +1,7 @@
 create table if not exists friend_requests (
-    request_id bigserial primary key,
-    sender_id bigint not null,
-    receiver_id bigint not null,
+    request_id serial primary key,
+    sender_id int not null,
+    receiver_id int not null,
     is_accepted boolean not null default false,
     send_at timestamptz not null default now(),
 

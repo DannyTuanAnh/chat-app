@@ -73,7 +73,7 @@ func (ar *authRepository) DisableIdentity(ctx context.Context, arg sqlc.DisableI
 	return nil
 }
 
-func (ar *authRepository) CreateSession(ctx context.Context, userID int64) (uuid.UUID, error) {
+func (ar *authRepository) CreateSession(ctx context.Context, userID int32) (uuid.UUID, error) {
 	sessionID, err := ar.auth_repo.DB.CreateSession(ctx, userID)
 	if err != nil {
 		return uuid.Nil, err
@@ -104,7 +104,7 @@ func (ar *authRepository) Logout(ctx context.Context, sessionID uuid.UUID) error
 	return nil
 }
 
-func (ar *authRepository) LogoutAll(ctx context.Context, userId int64) error {
+func (ar *authRepository) LogoutAll(ctx context.Context, userId int32) error {
 	err := ar.auth_repo.DB.RevokeAllSessions(ctx, userId)
 	if err != nil {
 		return err

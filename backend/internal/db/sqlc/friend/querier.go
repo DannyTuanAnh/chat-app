@@ -6,10 +6,14 @@ package sqlc
 
 import (
 	"context"
+
+	"github.com/jackc/pgx/v5/pgconn"
 )
 
 type Querier interface {
 	AddFriendById(ctx context.Context, arg AddFriendByIdParams) (AddFriendByIdRow, error)
+	DeleteUserStatus(ctx context.Context, userID int32) error
+	GetDisabledUser(ctx context.Context, userID int32) (UserStatus, error)
 	// Get user info with friendship/friend request status
 	// Check if there's a pending/accepted friend request
 	// Check if already friends
@@ -62,6 +66,7 @@ type Querier interface {
 	// where coalesce(p.name, u.display_name) ilike '%' || $2 || '%'
 	// order by coalesce(p.name, u.display_name);
 	RejectFriendRequestById(ctx context.Context, arg RejectFriendRequestByIdParams) error
+	SaveUserStatus(ctx context.Context, arg SaveUserStatusParams) (pgconn.CommandTag, error)
 }
 
 var _ Querier = (*Queries)(nil)

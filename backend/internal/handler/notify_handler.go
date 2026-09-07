@@ -37,7 +37,7 @@ func (n *NotifyHandler) HandleSSE(ctx *gin.Context) {
 		utils.ResponseErrorAbort(ctx, utils.NewError("User ID not found in context", utils.ErrCodeNotFound))
 	}
 
-	userID, ok := userId.(int64)
+	userID, ok := userId.(int32)
 	if !ok {
 		utils.ResponseErrorAbort(ctx, utils.NewError("User ID in context has invalid type", utils.ErrCodeInternal))
 		return
@@ -58,8 +58,7 @@ func (n *NotifyHandler) HandleSSE(ctx *gin.Context) {
 	}
 	ctx.Writer.Flush()
 
-	userIDStr := strconv.FormatInt(userID, 10)
-
+	userIDStr := strconv.FormatInt(int64(userID), 10)
 	messageChan := sse.MainBroker.AddClient(userIDStr)
 	defer sse.MainBroker.RemoveClient(userIDStr)
 

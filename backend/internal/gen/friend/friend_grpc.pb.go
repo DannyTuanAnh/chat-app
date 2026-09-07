@@ -19,7 +19,8 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	FriendService_GetRelationship_FullMethodName = "/proto.FriendService/GetRelationship"
+	FriendService_GetRelationship_FullMethodName   = "/proto.FriendService/GetRelationship"
+	FriendService_SendFriendRequest_FullMethodName = "/proto.FriendService/SendFriendRequest"
 )
 
 // FriendServiceClient is the client API for FriendService service.
@@ -27,6 +28,7 @@ const (
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type FriendServiceClient interface {
 	GetRelationship(ctx context.Context, in *GetRelationshipRequest, opts ...grpc.CallOption) (*GetRelationshipResponse, error)
+	SendFriendRequest(ctx context.Context, in *SendFriendRequestRequest, opts ...grpc.CallOption) (*SendFriendRequestResponse, error)
 }
 
 type friendServiceClient struct {
@@ -47,11 +49,22 @@ func (c *friendServiceClient) GetRelationship(ctx context.Context, in *GetRelati
 	return out, nil
 }
 
+func (c *friendServiceClient) SendFriendRequest(ctx context.Context, in *SendFriendRequestRequest, opts ...grpc.CallOption) (*SendFriendRequestResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(SendFriendRequestResponse)
+	err := c.cc.Invoke(ctx, FriendService_SendFriendRequest_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // FriendServiceServer is the server API for FriendService service.
 // All implementations must embed UnimplementedFriendServiceServer
 // for forward compatibility.
 type FriendServiceServer interface {
 	GetRelationship(context.Context, *GetRelationshipRequest) (*GetRelationshipResponse, error)
+	SendFriendRequest(context.Context, *SendFriendRequestRequest) (*SendFriendRequestResponse, error)
 	mustEmbedUnimplementedFriendServiceServer()
 }
 
@@ -64,6 +77,9 @@ type UnimplementedFriendServiceServer struct{}
 
 func (UnimplementedFriendServiceServer) GetRelationship(context.Context, *GetRelationshipRequest) (*GetRelationshipResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetRelationship not implemented")
+}
+func (UnimplementedFriendServiceServer) SendFriendRequest(context.Context, *SendFriendRequestRequest) (*SendFriendRequestResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method SendFriendRequest not implemented")
 }
 func (UnimplementedFriendServiceServer) mustEmbedUnimplementedFriendServiceServer() {}
 func (UnimplementedFriendServiceServer) testEmbeddedByValue()                       {}
@@ -104,6 +120,24 @@ func _FriendService_GetRelationship_Handler(srv interface{}, ctx context.Context
 	return interceptor(ctx, in, info, handler)
 }
 
+func _FriendService_SendFriendRequest_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SendFriendRequestRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(FriendServiceServer).SendFriendRequest(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: FriendService_SendFriendRequest_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(FriendServiceServer).SendFriendRequest(ctx, req.(*SendFriendRequestRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // FriendService_ServiceDesc is the grpc.ServiceDesc for FriendService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -114,6 +148,10 @@ var FriendService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetRelationship",
 			Handler:    _FriendService_GetRelationship_Handler,
+		},
+		{
+			MethodName: "SendFriendRequest",
+			Handler:    _FriendService_SendFriendRequest_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

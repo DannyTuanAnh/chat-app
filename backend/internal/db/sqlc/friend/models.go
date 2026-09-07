@@ -9,15 +9,21 @@ import (
 )
 
 type FriendRequest struct {
-	RequestID  int64     `json:"request_id"`
-	SenderID   int64     `json:"sender_id"`
-	ReceiverID int64     `json:"receiver_id"`
+	RequestID  int32     `json:"request_id"`
+	SenderID   int32     `json:"sender_id"`
+	ReceiverID int32     `json:"receiver_id"`
 	IsAccepted bool      `json:"is_accepted"`
 	SendAt     time.Time `json:"send_at"`
 }
 
 type Friendship struct {
-	User1ID       int64     `json:"user1_id"`
-	User2ID       int64     `json:"user2_id"`
+	User1ID       int32     `json:"user1_id"`
+	User2ID       int32     `json:"user2_id"`
 	EstablishedAt time.Time `json:"established_at"`
+}
+
+type UserStatus struct {
+	UserID    int32     `json:"user_id"`
+	Status    int16     `json:"status"`
+	UpdatedAt time.Time `json:"updated_at"`
 }

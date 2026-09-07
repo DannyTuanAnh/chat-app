@@ -38,3 +38,22 @@ update groups set
     avatar_url = coalesce(sqlc.narg('avatar_url'), avatar_url)
 where conversation_id = $1
 returning conversation_id, name, avatar_url, created_at;
+
+-- name: SaveUserStatus :execresult
+insert into user_status (
+    user_id,
+    status,
+    updated_at
+)
+values ($1, $2, $3)
+on conflict (user_id)
+do update set
+    status = excluded.status,
+    updated_at = excluded.updated_at
+where user_status.updated_at < excluded.updated_at;
+
+-- name: DeleteUserStatus :exec
+delete from user_status where user_id = $1;
+
+-- name: GetDisabledUser :one
+select user_id, status, updated_at from user_status where user_id = $1;

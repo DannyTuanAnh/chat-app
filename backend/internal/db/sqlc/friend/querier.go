@@ -18,20 +18,8 @@ type Querier interface {
 	// Check if there's a pending/accepted friend request
 	// Check if already friends
 	GetInfoRelationship(ctx context.Context, arg GetInfoRelationshipParams) (GetInfoRelationshipRow, error)
-	// -- name: GetPendingFriendRequests :many
-	// select fr.request_id, u.uuid, p.name, p.avatar_url, fr.send_at
-	// from friend_requests fr
-	// join users u on fr.sender_id = u.user_id
-	// left join profiles p on fr.sender_id = p.user_id
-	// where fr.receiver_id = $1 and fr.status = 'pending'
-	// order by fr.send_at desc;
-	// -- name: GetSentFriendRequests :many
-	// select fr.request_id, u.uuid, p.name, p.avatar_url, fr.send_at
-	// from friend_requests fr
-	// join users u on fr.receiver_id = u.user_id
-	// left join profiles p on fr.receiver_id = p.user_id
-	// where fr.sender_id = $1 and fr.status = 'pending'
-	// order by fr.send_at desc;
+	GetPendingFriendRequests(ctx context.Context, arg GetPendingFriendRequestsParams) ([]GetPendingFriendRequestsRow, error)
+	GetSentFriendRequests(ctx context.Context, arg GetSentFriendRequestsParams) ([]GetSentFriendRequestsRow, error)
 	// -- name: GetFriendsList :many
 	// with friend_ids as (
 	//     select f.user1_id as id from friendships f where f.user2_id = $1
@@ -65,7 +53,7 @@ type Querier interface {
 	// join friend_ids f on u.user_id = f.id
 	// where coalesce(p.name, u.display_name) ilike '%' || $2 || '%'
 	// order by coalesce(p.name, u.display_name);
-	RejectFriendRequestById(ctx context.Context, arg RejectFriendRequestByIdParams) error
+	RejectFriendRequestById(ctx context.Context, arg RejectFriendRequestByIdParams) (pgconn.CommandTag, error)
 	SaveUserStatus(ctx context.Context, arg SaveUserStatusParams) (pgconn.CommandTag, error)
 }
 

@@ -1,21 +1,20 @@
 -- name: AddFriendById :one
 select f.status::boolean, f.message::text from send_friend_request(sqlc.arg(sender_user_id), sqlc.arg(receiver_user_id)) as f;
 
--- -- name: GetPendingFriendRequests :many
--- select fr.request_id, u.uuid, p.name, p.avatar_url, fr.send_at
--- from friend_requests fr
--- join users u on fr.sender_id = u.user_id
--- left join profiles p on fr.sender_id = p.user_id
--- where fr.receiver_id = $1 and fr.status = 'pending'
--- order by fr.send_at desc;
+-- name: GetPendingFriendRequests :many
+select request_id, sender_id, send_at
+from friend_requests
+where receiver_id = sqlc.arg(current_user_id) and is_accepted = false and request_id > sqlc.arg(last_request_id)
+order by send_at desc
+limit 10;
 
--- -- name: GetSentFriendRequests :many
--- select fr.request_id, u.uuid, p.name, p.avatar_url, fr.send_at
--- from friend_requests fr
--- join users u on fr.receiver_id = u.user_id
--- left join profiles p on fr.receiver_id = p.user_id
--- where fr.sender_id = $1 and fr.status = 'pending'
--- order by fr.send_at desc;
+
+-- name: GetSentFriendRequests :many
+select request_id, receiver_id, send_at
+from friend_requests
+where sender_id = sqlc.arg(current_user_id) and is_accepted = false and request_id > sqlc.arg(last_request_id)
+order by send_at desc
+limit 10;
 
 -- -- name: GetFriendsList :many
 -- with friend_ids as (
@@ -54,9 +53,9 @@ select f.status::boolean, f.message::text from send_friend_request(sqlc.arg(send
 -- where coalesce(p.name, u.display_name) ilike '%' || $2 || '%' 
 -- order by coalesce(p.name, u.display_name);
 
--- name: RejectFriendRequestById :exec
+-- name: RejectFriendRequestById :execresult
 delete from friend_requests
-where request_id = $1 and receiver_id = $2 and status = 'pending';
+where request_id = $1 and receiver_id = $2 and is_accepted=false;
 
 -- name: GetInfoRelationship :one
 -- Get user info with friendship/friend request status

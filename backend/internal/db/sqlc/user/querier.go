@@ -18,6 +18,7 @@ type Querier interface {
 	DeleteUser(ctx context.Context, userID int32) (pgconn.CommandTag, error)
 	DisableUser(ctx context.Context, userID int32) error
 	GetProfile(ctx context.Context, userID int32) (GetProfileRow, error)
+	GetProfileByUserIDs(ctx context.Context, userIds []int32) ([]GetProfileByUserIDsRow, error)
 	GetProfileByUserId(ctx context.Context, arg GetProfileByUserIdParams) (GetProfileByUserIdRow, error)
 	GetUUIDByUserId(ctx context.Context, userID int32) (uuid.UUID, error)
 	GetUserByUUID(ctx context.Context, targetUserUuid uuid.UUID) (GetUserByUUIDRow, error)

@@ -95,15 +95,91 @@ func (q *Queries) GetInfoRelationship(ctx context.Context, arg GetInfoRelationsh
 	return i, err
 }
 
-const rejectFriendRequestById = `-- name: RejectFriendRequestById :exec
+const getPendingFriendRequests = `-- name: GetPendingFriendRequests :many
+select request_id, sender_id, send_at
+from friend_requests
+where receiver_id = $1 and is_accepted = false and request_id > $2
+order by send_at desc
+limit 10
+`
 
+type GetPendingFriendRequestsParams struct {
+	CurrentUserID int32 `json:"current_user_id"`
+	LastRequestID int32 `json:"last_request_id"`
+}
 
+type GetPendingFriendRequestsRow struct {
+	RequestID int32     `json:"request_id"`
+	SenderID  int32     `json:"sender_id"`
+	SendAt    time.Time `json:"send_at"`
+}
+
+func (q *Queries) GetPendingFriendRequests(ctx context.Context, arg GetPendingFriendRequestsParams) ([]GetPendingFriendRequestsRow, error) {
+	rows, err := q.db.Query(ctx, getPendingFriendRequests, arg.CurrentUserID, arg.LastRequestID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []GetPendingFriendRequestsRow{}
+	for rows.Next() {
+		var i GetPendingFriendRequestsRow
+		if err := rows.Scan(&i.RequestID, &i.SenderID, &i.SendAt); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getSentFriendRequests = `-- name: GetSentFriendRequests :many
+select request_id, receiver_id, send_at
+from friend_requests
+where sender_id = $1 and is_accepted = false and request_id > $2
+order by send_at desc
+limit 10
+`
+
+type GetSentFriendRequestsParams struct {
+	CurrentUserID int32 `json:"current_user_id"`
+	LastRequestID int32 `json:"last_request_id"`
+}
+
+type GetSentFriendRequestsRow struct {
+	RequestID  int32     `json:"request_id"`
+	ReceiverID int32     `json:"receiver_id"`
+	SendAt     time.Time `json:"send_at"`
+}
+
+func (q *Queries) GetSentFriendRequests(ctx context.Context, arg GetSentFriendRequestsParams) ([]GetSentFriendRequestsRow, error) {
+	rows, err := q.db.Query(ctx, getSentFriendRequests, arg.CurrentUserID, arg.LastRequestID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []GetSentFriendRequestsRow{}
+	for rows.Next() {
+		var i GetSentFriendRequestsRow
+		if err := rows.Scan(&i.RequestID, &i.ReceiverID, &i.SendAt); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const rejectFriendRequestById = `-- name: RejectFriendRequestById :execresult
 
 
 
 
 delete from friend_requests
-where request_id = $1 and receiver_id = $2 and status = 'pending'
+where request_id = $1 and receiver_id = $2 and is_accepted=false
 `
 
 type RejectFriendRequestByIdParams struct {
@@ -111,20 +187,6 @@ type RejectFriendRequestByIdParams struct {
 	ReceiverID int32 `json:"receiver_id"`
 }
 
-// -- name: GetPendingFriendRequests :many
-// select fr.request_id, u.uuid, p.name, p.avatar_url, fr.send_at
-// from friend_requests fr
-// join users u on fr.sender_id = u.user_id
-// left join profiles p on fr.sender_id = p.user_id
-// where fr.receiver_id = $1 and fr.status = 'pending'
-// order by fr.send_at desc;
-// -- name: GetSentFriendRequests :many
-// select fr.request_id, u.uuid, p.name, p.avatar_url, fr.send_at
-// from friend_requests fr
-// join users u on fr.receiver_id = u.user_id
-// left join profiles p on fr.receiver_id = p.user_id
-// where fr.sender_id = $1 and fr.status = 'pending'
-// order by fr.send_at desc;
 // -- name: GetFriendsList :many
 // with friend_ids as (
 //
@@ -166,9 +228,8 @@ type RejectFriendRequestByIdParams struct {
 // join friend_ids f on u.user_id = f.id
 // where coalesce(p.name, u.display_name) ilike '%' || $2 || '%'
 // order by coalesce(p.name, u.display_name);
-func (q *Queries) RejectFriendRequestById(ctx context.Context, arg RejectFriendRequestByIdParams) error {
-	_, err := q.db.Exec(ctx, rejectFriendRequestById, arg.RequestID, arg.ReceiverID)
-	return err
+func (q *Queries) RejectFriendRequestById(ctx context.Context, arg RejectFriendRequestByIdParams) (pgconn.CommandTag, error) {
+	return q.db.Exec(ctx, rejectFriendRequestById, arg.RequestID, arg.ReceiverID)
 }
 
 const saveUserStatus = `-- name: SaveUserStatus :execresult

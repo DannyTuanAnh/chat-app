@@ -261,6 +261,41 @@ func (s *userService) GetProfileByUserID(ctx context.Context, req *user_proto.Ge
 
 }
 
+func (s *userService) GetProfileByUserIDs(ctx context.Context, req *user_proto.GetProfileByUserIDsRequest) (*user_proto.GetProfileByUserIDsResponse, error) {
+	if err := s.validator.Validate(req); err != nil {
+		return nil, validation.BuildValidationError(err)
+	}
+
+	data, err := s.user_repo.GetProfileByUserIDs(ctx, req.UserIds)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "Failed to get profiles by user IDs: %v", err)
+	}
+
+	var profiles []*user_proto.GetProfileByUserIDsResponse_UserProfile
+	for _, d := range data {
+
+		var avatar_url *string
+		if d.AvatarUrl.Valid {
+			v := fmt.Sprintf("%s?v=%d", d.AvatarUrl.String, d.AvatarVersion)
+			avatar_url = &v
+		} else {
+			avatar_url = nil
+		}
+
+		info := &user_proto.GetProfileByUserIDsResponse_UserProfile{
+			UserId:    d.UserID,
+			Name:      d.Name,
+			AvatarUrl: avatar_url,
+		}
+
+		profiles = append(profiles, info)
+	}
+
+	return &user_proto.GetProfileByUserIDsResponse{
+		Profiles: profiles,
+	}, nil
+}
+
 func (s *userService) SearchUserByUUID(ctx context.Context, req *user_proto.SearchUserByUUIDRequest) (*user_proto.SearchUserByUUIDResponse, error) {
 	if err := s.validator.Validate(req); err != nil {
 		return nil, validation.BuildValidationError(err)

@@ -88,6 +88,15 @@ func (ur *userRepository) GetProfileByUserID(ctx context.Context, arg sqlc.GetPr
 	return row, nil
 }
 
+func (ur *userRepository) GetProfileByUserIDs(ctx context.Context, userIDs []int32) ([]sqlc.GetProfileByUserIDsRow, error) {
+	rows, err := ur.user_repo.DB.GetProfileByUserIDs(ctx, userIDs)
+	if err != nil {
+		return nil, err
+	}
+
+	return rows, nil
+}
+
 func (ur *userRepository) GetUserByUUID(ctx context.Context, targetUserUUID uuid.UUID) (sqlc.GetUserByUUIDRow, error) {
 	row, err := ur.user_repo.DB.GetUserByUUID(ctx, targetUserUUID)
 	if err != nil {

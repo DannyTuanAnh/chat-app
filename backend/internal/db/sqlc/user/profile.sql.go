@@ -83,6 +83,49 @@ func (q *Queries) GetProfile(ctx context.Context, userID int32) (GetProfileRow, 
 	return i, err
 }
 
+const getProfileByUserIDs = `-- name: GetProfileByUserIDs :many
+SELECT 
+    u.user_id,
+    p.name,
+    p.avatar_url,
+    p.avatar_version
+FROM profiles p
+join users u on p.user_id = u.user_id
+WHERE p.user_id = ANY($1::int4[]) AND u.is_active = true
+`
+
+type GetProfileByUserIDsRow struct {
+	UserID        int32       `json:"user_id"`
+	Name          string      `json:"name"`
+	AvatarUrl     pgtype.Text `json:"avatar_url"`
+	AvatarVersion int32       `json:"avatar_version"`
+}
+
+func (q *Queries) GetProfileByUserIDs(ctx context.Context, userIds []int32) ([]GetProfileByUserIDsRow, error) {
+	rows, err := q.db.Query(ctx, getProfileByUserIDs, userIds)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []GetProfileByUserIDsRow{}
+	for rows.Next() {
+		var i GetProfileByUserIDsRow
+		if err := rows.Scan(
+			&i.UserID,
+			&i.Name,
+			&i.AvatarUrl,
+			&i.AvatarVersion,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getProfileByUserId = `-- name: GetProfileByUserId :one
 SELECT 
     u.user_id,

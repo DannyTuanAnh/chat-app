@@ -51,3 +51,34 @@ func (fr *friendRepository) IsUserDisabled(ctx context.Context, userID int32) (U
 
 	return UserStatus(row.Status), nil
 }
+
+func (fr *friendRepository) RejectFriendRequest(ctx context.Context, arg sqlc.RejectFriendRequestByIdParams) error {
+	row, err := fr.friend_repo.DB.RejectFriendRequestById(ctx, arg)
+	if err != nil {
+		return err
+	}
+
+	if row.RowsAffected() == 0 {
+		return ErrNoRowsRejectFriendRequestAffected
+	}
+
+	return nil
+}
+
+func (fr *friendRepository) GetPendingFriendRequests(ctx context.Context, arg sqlc.GetPendingFriendRequestsParams) ([]sqlc.GetPendingFriendRequestsRow, error) {
+	rows, err := fr.friend_repo.DB.GetPendingFriendRequests(ctx, arg)
+	if err != nil {
+		return nil, err
+	}
+
+	return rows, nil
+}
+
+func (fr *friendRepository) GetSentFriendRequests(ctx context.Context, arg sqlc.GetSentFriendRequestsParams) ([]sqlc.GetSentFriendRequestsRow, error) {
+	rows, err := fr.friend_repo.DB.GetSentFriendRequests(ctx, arg)
+	if err != nil {
+		return nil, err
+	}
+
+	return rows, nil
+}

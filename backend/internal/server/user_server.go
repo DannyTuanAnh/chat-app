@@ -56,6 +56,9 @@ var userPolicies = map[string][]string{
 	"/proto.UserService/GetProfileByUserID": {
 		os.Getenv("API_GATEWAY_NAME"),
 	},
+	"/proto.UserService/GetProfileByUserIDs": {
+		os.Getenv("FRIEND_SERVICE_NAME"),
+	},
 	"/proto.UserService/GetProfile": {
 		os.Getenv("API_GATEWAY_NAME"),
 	},

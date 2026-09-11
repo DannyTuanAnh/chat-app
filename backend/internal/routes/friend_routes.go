@@ -19,5 +19,8 @@ func (fr *FriendRoutes) Register(r *gin.RouterGroup) {
 	friend := r.Group("/friend")
 	{
 		friend.POST("/friend-request", fr.friend_handler.SendFriendRequest)
+		friend.GET("/friend-request/pending", fr.friend_handler.GetPendingFriendRequest)
+		friend.GET("/friend-request/sent", fr.friend_handler.GetSentFriendRequest)
+		friend.POST("/friend-request/reject", fr.friend_handler.RejectFriendRequest)
 	}
 }

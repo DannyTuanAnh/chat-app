@@ -29,6 +29,15 @@ var friendPolicies = map[string][]string{
 	"/proto.FriendService/SendFriendRequest": {
 		os.Getenv("API_GATEWAY_NAME"),
 	},
+	"/proto.FriendService/RejectFriendRequest": {
+		os.Getenv("API_GATEWAY_NAME"),
+	},
+	"/proto.FriendService/GetPendingFriendRequests": {
+		os.Getenv("API_GATEWAY_NAME"),
+	},
+	"/proto.FriendService/GetSentFriendRequests": {
+		os.Getenv("API_GATEWAY_NAME"),
+	},
 }
 
 type FriendServer struct {

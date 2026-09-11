@@ -17,10 +17,28 @@ service UserService {
   rpc DisableUserByUserID(DisableUserRequest) returns (DisableUserResponse);
   rpc GetProfile(GetProfileRequest) returns (GetProfileResponse);
   rpc GetProfileByUserID(GetProfileByUserIDRequest) returns (GetProfileByUserIDResponse);
+  rpc GetProfileByUserIDs(GetProfileByUserIDsRequest) returns (GetProfileByUserIDsResponse);
   rpc VerifyIDTokenOTP(VerifyIDTokenOTPRequest) returns (VerifyIDTokenOTPResponse);
   rpc UpdateProfile(UpdateProfileRequest) returns (UpdateProfileResponse);
   rpc UpdateAvatar(UpdateAvatarRequest) returns (UpdateAvatarResponse);
   rpc ReportUserImage(ReportUserImageRequest) returns (ReportUserImageResponse);
+}
+
+message GetProfileByUserIDsRequest {
+  repeated int32 user_ids = 1 [
+    (buf.validate.field).repeated.max_items = 10,
+    (buf.validate.field).repeated.items.int32.gt = 0
+  ];
+}
+
+message GetProfileByUserIDsResponse {
+  message UserProfile {
+    int32 user_id = 1;
+    string name = 2;
+    optional string avatar_url = 3;
+  }
+
+  repeated UserProfile profiles = 1;
 }
 
 message SearchUserByUUIDRequest {

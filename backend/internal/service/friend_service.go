@@ -8,6 +8,8 @@ import (
 	"github.com/DannyTuanAnh/end-to-end_encrypted_messaging_app/internal/client"
 	sqlc "github.com/DannyTuanAnh/end-to-end_encrypted_messaging_app/internal/db/sqlc/friend"
 	friend_proto "github.com/DannyTuanAnh/end-to-end_encrypted_messaging_app/internal/gen/friend"
+	user_proto "github.com/DannyTuanAnh/end-to-end_encrypted_messaging_app/internal/gen/user"
+	"github.com/DannyTuanAnh/end-to-end_encrypted_messaging_app/internal/interceptor"
 	"github.com/DannyTuanAnh/end-to-end_encrypted_messaging_app/internal/repository"
 	"github.com/DannyTuanAnh/end-to-end_encrypted_messaging_app/internal/utils"
 	"github.com/DannyTuanAnh/end-to-end_encrypted_messaging_app/internal/validation"
@@ -109,5 +111,152 @@ func (fs *friendService) SendFriendRequest(ctx context.Context, req *friend_prot
 
 	return &friend_proto.SendFriendRequestResponse{
 		Success: true,
+	}, nil
+}
+
+func (fs *friendService) RejectFriendRequest(ctx context.Context, req *friend_proto.RejectFriendRequestRequest) (*friend_proto.RejectFriendRequestResponse, error) {
+	if err := fs.validator.Validate(req); err != nil {
+		return nil, validation.BuildValidationError(err)
+	}
+
+	err := fs.friend_repo.RejectFriendRequest(ctx, sqlc.RejectFriendRequestByIdParams{
+		RequestID:  req.RequestId,
+		ReceiverID: req.CurrentUserId,
+	})
+
+	if err != nil {
+		if err == repository.ErrNoRowsRejectFriendRequestAffected {
+			return nil, status.Errorf(codes.NotFound, "Failed to reject friend request: %v", err)
+		}
+
+		return nil, status.Errorf(codes.Internal, "Failed to reject friend request: %v", err)
+	}
+
+	return &friend_proto.RejectFriendRequestResponse{
+		Success: true,
+	}, nil
+}
+
+func (fs *friendService) GetPendingFriendRequests(ctx context.Context, req *friend_proto.GetPendingFriendRequestsRequest) (*friend_proto.GetPendingFriendRequestsResponse, error) {
+	if err := fs.validator.Validate(req); err != nil {
+		return nil, validation.BuildValidationError(err)
+	}
+
+	rows, err := fs.friend_repo.GetPendingFriendRequests(ctx, sqlc.GetPendingFriendRequestsParams{
+		CurrentUserID: req.CurrentUserId,
+		LastRequestID: req.LastRequestId,
+	})
+
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "Failed to get pending friend requests: %v", err)
+	}
+
+	if len(rows) == 0 {
+		return &friend_proto.GetPendingFriendRequestsResponse{
+			PendingRequests: []*friend_proto.PendingFriendRequest{},
+		}, nil
+	}
+
+	senderIDs := make([]int32, 0, len(rows))
+	for _, row := range rows {
+		senderIDs = append(senderIDs, row.SenderID)
+	}
+
+	request := &user_proto.GetProfileByUserIDsRequest{
+		UserIds: senderIDs,
+	}
+
+	userData, err := fs.user_client.Client.GetProfileByUserIDs(interceptor.WithUserIDMetadata(ctx, req.CurrentUserId), request)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "Failed to get pending friend requests: %v", err)
+	}
+
+	userByID := make(map[int32]*user_proto.GetProfileByUserIDsResponse_UserProfile, len(userData.Profiles))
+	for _, profile := range userData.Profiles {
+		userByID[profile.UserId] = profile
+	}
+
+	pendingRequests := make([]*friend_proto.PendingFriendRequest, 0, len(rows))
+	for _, row := range rows {
+		userProfile, ok := userByID[row.SenderID]
+		if !ok {
+			return nil, status.Errorf(codes.Internal, "Failed to get pending friend requests: user profile not found for sender ID %d", row.SenderID)
+		}
+
+		pendingRequests = append(pendingRequests, &friend_proto.PendingFriendRequest{
+			RequestId: row.RequestID,
+			Sender: &friend_proto.UserSummary{
+				UserId:    userProfile.UserId,
+				Username:  userProfile.Name,
+				AvatarUrl: userProfile.AvatarUrl,
+			},
+			SendAt: row.SendAt.Format("2006-01-02 15:04:05"),
+		})
+	}
+
+	return &friend_proto.GetPendingFriendRequestsResponse{
+		PendingRequests: pendingRequests,
+	}, nil
+}
+
+func (fs *friendService) GetSentFriendRequests(ctx context.Context, req *friend_proto.GetSentFriendRequestsRequest) (*friend_proto.GetSentFriendRequestsResponse, error) {
+	if err := fs.validator.Validate(req); err != nil {
+		return nil, validation.BuildValidationError(err)
+	}
+
+	rows, err := fs.friend_repo.GetSentFriendRequests(ctx, sqlc.GetSentFriendRequestsParams{
+		CurrentUserID: req.CurrentUserId,
+		LastRequestID: req.LastRequestId,
+	})
+
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "Failed to get sent friend requests: %v", err)
+	}
+
+	if len(rows) == 0 {
+		return &friend_proto.GetSentFriendRequestsResponse{
+			SentRequests: []*friend_proto.SentFriendRequest{},
+		}, nil
+	}
+
+	receiverIDs := make([]int32, 0, len(rows))
+	for _, row := range rows {
+		receiverIDs = append(receiverIDs, row.ReceiverID)
+	}
+
+	request := &user_proto.GetProfileByUserIDsRequest{
+		UserIds: receiverIDs,
+	}
+
+	userData, err := fs.user_client.Client.GetProfileByUserIDs(interceptor.WithUserIDMetadata(ctx, req.CurrentUserId), request)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "Failed to get sent friend requests: %v", err)
+	}
+
+	userByID := make(map[int32]*user_proto.GetProfileByUserIDsResponse_UserProfile, len(userData.Profiles))
+	for _, profile := range userData.Profiles {
+		userByID[profile.UserId] = profile
+	}
+
+	sentRequests := make([]*friend_proto.SentFriendRequest, 0, len(rows))
+	for _, row := range rows {
+		userProfile, ok := userByID[row.ReceiverID]
+		if !ok {
+			return nil, status.Errorf(codes.Internal, "Failed to get sent friend requests: user profile not found for receiver ID %d", row.ReceiverID)
+		}
+
+		sentRequests = append(sentRequests, &friend_proto.SentFriendRequest{
+			RequestId: row.RequestID,
+			Receiver: &friend_proto.UserSummary{
+				UserId:    userProfile.UserId,
+				Username:  userProfile.Name,
+				AvatarUrl: userProfile.AvatarUrl,
+			},
+			SendAt: row.SendAt.Format("2006-01-02 15:04:05"),
+		})
+	}
+
+	return &friend_proto.GetSentFriendRequestsResponse{
+		SentRequests: sentRequests,
 	}, nil
 }

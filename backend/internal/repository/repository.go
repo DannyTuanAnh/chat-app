@@ -41,6 +41,7 @@ type UserRepository interface {
 	IsExistProfile(ctx context.Context, userId int32) (bool, error)
 	GetProfile(ctx context.Context, userId int32) (sqlc_user.GetProfileRow, error)
 	GetProfileByUserID(ctx context.Context, arg sqlc_user.GetProfileByUserIdParams) (sqlc_user.GetProfileByUserIdRow, error)
+	GetProfileByUserIDs(ctx context.Context, userIDs []int32) ([]sqlc_user.GetProfileByUserIDsRow, error)
 	GetUserByUUID(ctx context.Context, targetUserUUID uuid.UUID) (sqlc_user.GetUserByUUIDRow, error)
 	CreateProfile(ctx context.Context, arg sqlc_user.CreateProfileParams) (sqlc_user.Profile, error)
 	DisableUserByUserID(ctx context.Context, userId int32) error
@@ -49,7 +50,11 @@ type UserRepository interface {
 
 type FriendRepository interface {
 	GetInfoRelationship(ctx context.Context, params sqlc_friend.GetInfoRelationshipParams) (sqlc_friend.GetInfoRelationshipRow, error)
+
 	CreateFriendRequest(ctx context.Context, arg sqlc_friend.AddFriendByIdParams) (sqlc_friend.AddFriendByIdRow, error)
+	GetPendingFriendRequests(ctx context.Context, arg sqlc_friend.GetPendingFriendRequestsParams) ([]sqlc_friend.GetPendingFriendRequestsRow, error)
+	GetSentFriendRequests(ctx context.Context, arg sqlc_friend.GetSentFriendRequestsParams) ([]sqlc_friend.GetSentFriendRequestsRow, error)
+	RejectFriendRequest(ctx context.Context, arg sqlc_friend.RejectFriendRequestByIdParams) error
 
 	IsUserDisabled(ctx context.Context, userID int32) (UserStatus, error)
 }

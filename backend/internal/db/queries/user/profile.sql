@@ -15,6 +15,16 @@ FROM profiles p
 join users u on p.user_id = u.user_id
 WHERE p.user_id = sqlc.arg(target_user_id) AND u.is_active = true AND p.user_id <> sqlc.arg(current_user_id);
 
+-- name: GetProfileByUserIDs :many
+SELECT 
+    u.user_id,
+    p.name,
+    p.avatar_url,
+    p.avatar_version
+FROM profiles p
+join users u on p.user_id = u.user_id
+WHERE p.user_id = ANY(sqlc.arg(user_ids)::int4[]) AND u.is_active = true;
+
 -- name: CreateProfile :one
 INSERT INTO profiles (user_id, name, email, birthday, avatar_url) VALUES ($1, $2, $3, $4, $5) RETURNING *;
 

@@ -9,6 +9,73 @@ option go_package = "internal/gen-proto/friend;friend_proto";
 service FriendService {
     rpc GetRelationship(GetRelationshipRequest) returns (GetRelationshipResponse);
     rpc SendFriendRequest(SendFriendRequestRequest) returns (SendFriendRequestResponse);
+    rpc RejectFriendRequest(RejectFriendRequestRequest) returns (RejectFriendRequestResponse);
+    rpc GetPendingFriendRequests(GetPendingFriendRequestsRequest) returns (GetPendingFriendRequestsResponse);
+    rpc GetSentFriendRequests(GetSentFriendRequestsRequest) returns (GetSentFriendRequestsResponse);
+}
+
+message GetSentFriendRequestsRequest {
+    int32 current_user_id = 1 [
+        (buf.validate.field).required = true,
+        (buf.validate.field).int32.gt = 0
+    ];
+
+    int32 last_request_id = 2 [
+        (buf.validate.field).int32.gte = 0
+    ];
+}
+
+message GetSentFriendRequestsResponse {
+    repeated SentFriendRequest sent_requests = 1;
+}
+
+message SentFriendRequest {
+    int32 request_id = 1;
+    UserSummary receiver = 2;
+    string send_at = 3;
+}
+
+message GetPendingFriendRequestsRequest {
+    int32 current_user_id = 1 [
+        (buf.validate.field).required = true,
+        (buf.validate.field).int32.gt = 0
+    ];
+
+    int32 last_request_id = 2 [
+        (buf.validate.field).int32.gte = 0
+    ];
+}
+
+message GetPendingFriendRequestsResponse {
+    repeated PendingFriendRequest pending_requests = 1;
+}
+
+message PendingFriendRequest {
+    int32 request_id = 1;
+    UserSummary sender = 2;
+    string send_at = 3;
+}
+
+message UserSummary {
+    int32 user_id = 1;
+    string username = 2;
+    optional string avatar_url = 3;
+}
+
+message RejectFriendRequestRequest {
+    int32 request_id = 1 [
+        (buf.validate.field).required = true,
+        (buf.validate.field).int32.gt = 0
+    ];
+
+    int32 current_user_id = 2 [
+        (buf.validate.field).required = true,
+        (buf.validate.field).int32.gt = 0
+    ];
+}
+
+message RejectFriendRequestResponse {
+    bool success = 1;
 }
 
 message GetRelationshipRequest {

@@ -59,5 +59,7 @@ type FriendRepository interface {
 	IsUserDisabled(ctx context.Context, userID int32) (UserStatus, error)
 }
 
+type ChatRepository interface{}
+
 type NotifyRepository interface {
 }

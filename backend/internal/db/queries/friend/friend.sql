@@ -16,6 +16,20 @@ where sender_id = sqlc.arg(current_user_id) and is_accepted = false and request_
 order by send_at desc
 limit 10;
 
+-- name: AcceptFriendRequestById :one
+update friend_requests
+set is_accepted = true
+where request_id = $1 and receiver_id = $2 and is_accepted = false
+returning sender_id, receiver_id;
+
+-- name: CreateFriendShip :execresult
+insert into friendships (user1_id, user2_id, established_at)
+values (least(sqlc.arg(sender_user_id), sqlc.arg(receiver_user_id)), greatest(sqlc.arg(sender_user_id), sqlc.arg(receiver_user_id)), sqlc.arg(established_at))
+on conflict(user1_id, user2_id)
+do update set 
+    established_at = excluded.established_at
+where friendships.established_at < excluded.established_at;
+
 -- -- name: GetFriendsList :many
 -- with friend_ids as (
 --     select f.user1_id as id from friendships f where f.user2_id = $1

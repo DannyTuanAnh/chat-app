@@ -6,10 +6,10 @@ require (
 	buf.build/gen/go/bufbuild/protovalidate/protocolbuffers/go v1.36.11-20260209202127-80ab13bee0bf.1
 	buf.build/go/protovalidate v1.1.3
 	cloud.google.com/go/auth v0.20.0
-	cloud.google.com/go/cloudsqlconn v1.21.0
 	cloud.google.com/go/storage v1.62.0
 	cloud.google.com/go/vision v1.2.0
 	firebase.google.com/go v3.13.0+incompatible
+	github.com/coder/websocket v1.8.15
 	github.com/gen2brain/avif v0.4.4
 	github.com/gin-gonic/gin v1.11.0
 	github.com/go-playground/validator/v10 v10.27.0
@@ -64,7 +64,6 @@ require (
 	github.com/go-playground/universal-translator v0.18.1 // indirect
 	github.com/goccy/go-json v0.10.2 // indirect
 	github.com/goccy/go-yaml v1.18.0 // indirect
-	github.com/golang/groupcache v0.0.0-20241129210726-2c02b8208cf8 // indirect
 	github.com/golang/protobuf v1.5.4 // indirect
 	github.com/google/cel-go v0.27.0 // indirect
 	github.com/google/s2a-go v0.1.9 // indirect
@@ -88,7 +87,6 @@ require (
 	github.com/tetratelabs/wazero v1.9.0 // indirect
 	github.com/twitchyliquid64/golang-asm v0.15.1 // indirect
 	github.com/ugorji/go/codec v1.3.0 // indirect
-	go.opencensus.io v0.24.0 // indirect
 	go.opentelemetry.io/auto/sdk v1.2.1 // indirect
 	go.opentelemetry.io/contrib/detectors/gcp v1.39.0 // indirect
 	go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc v0.67.0 // indirect

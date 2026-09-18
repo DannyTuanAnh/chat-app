@@ -23,6 +23,6 @@ message CreatePrivateConversationRequest {
 }
 
 message CreatePrivateConversationResponse {
-    int32 conversation_id = 1;
+    bool success = 1;
 }
 

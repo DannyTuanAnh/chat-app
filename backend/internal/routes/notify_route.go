@@ -16,8 +16,8 @@ func NewNotifyRoutes(handler *handler.NotifyHandler) Routes {
 }
 
 func (ur *NotifyRoutes) Register(r *gin.RouterGroup) {
-	notify := r.Group("/notify")
-	{
-		notify.GET("/sse", ur.notify_handler.HandleSSE)
-	}
+	// notify := r.Group("/notify")
+	// {
+	// 	notify.GET("/sse", ur.notify_handler.HandleSSE)
+	// }
 }

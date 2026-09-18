@@ -18,4 +18,8 @@ var (
 	ErrNotFoundIdentityUUID              = errors.New("identity not found for the given UUID")
 	ErrUserIsUnActive                    = errors.New("user is inactive for the given UUID")
 	ErrNoRowsRejectFriendRequestAffected = errors.New("no rows affected when rejecting friend request, may be you are trying to reject a friend request that does not exist or has already been accepted or rejected")
+
+	// Friend Repository Errors
+	ErrNoRowsAcceptFriendRequestAffected = errors.New("no rows affected when accepting friend request, may be you are trying to accept a friend request that does not exist or has already been accepted or rejected")
+	ErrFriendshipAlreadyLatest           = errors.New("friendship already exists with a newer or equal established time")
 )

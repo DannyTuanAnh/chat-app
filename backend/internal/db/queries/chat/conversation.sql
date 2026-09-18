@@ -181,6 +181,15 @@ where m.conversation_id = $1
   and m.sender_id <> $2
   and mr.message_id is null;
 
+-- name: CreateConversation :one
+insert into conversations(type)
+values($1)
+returning id;
+
+-- name: AddMembersToConversation :execresult
+insert into conversation_members (conversation_id, user_id)
+select $1, unnest(sqlc.arg(user_ids)::int[]);
+
 -- name: CreateMessage :one
 insert into messages (sender_id, conversation_id, content)
 values ($1, $2, $3)

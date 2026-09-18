@@ -9,6 +9,7 @@ import (
 	"context"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgtype"
 )
@@ -24,13 +25,13 @@ returning conversation_id, user_id, role
 `
 
 type AddGroupMembersParams struct {
-	ConversationID int64 `json:"conversation_id"`
-	UserID         int32 `json:"user_id"`
-	UserID_2       int32 `json:"user_id_2"`
+	ConversationID uuid.UUID `json:"conversation_id"`
+	UserID         int32     `json:"user_id"`
+	UserID_2       int32     `json:"user_id_2"`
 }
 
 type AddGroupMembersRow struct {
-	ConversationID int64      `json:"conversation_id"`
+	ConversationID uuid.UUID  `json:"conversation_id"`
 	UserID         int32      `json:"user_id"`
 	Role           MemberRole `json:"role"`
 }
@@ -69,13 +70,13 @@ returning conversation_id, user_id
 `
 
 type LeaveConversationParams struct {
-	ConversationID int64 `json:"conversation_id"`
-	UserID         int32 `json:"user_id"`
+	ConversationID uuid.UUID `json:"conversation_id"`
+	UserID         int32     `json:"user_id"`
 }
 
 type LeaveConversationRow struct {
-	ConversationID int64 `json:"conversation_id"`
-	UserID         int32 `json:"user_id"`
+	ConversationID uuid.UUID `json:"conversation_id"`
+	UserID         int32     `json:"user_id"`
 }
 
 func (q *Queries) LeaveConversation(ctx context.Context, arg LeaveConversationParams) (LeaveConversationRow, error) {
@@ -95,9 +96,9 @@ and exists (
 `
 
 type RemoveGroupMembersParams struct {
-	ConversationID int64 `json:"conversation_id"`
-	UserID         int32 `json:"user_id"`
-	UserID_2       int32 `json:"user_id_2"`
+	ConversationID uuid.UUID `json:"conversation_id"`
+	UserID         int32     `json:"user_id"`
+	UserID_2       int32     `json:"user_id_2"`
 }
 
 func (q *Queries) RemoveGroupMembers(ctx context.Context, arg RemoveGroupMembersParams) error {
@@ -139,7 +140,7 @@ returning conversation_id, name, avatar_url, created_at
 `
 
 type UpdateGroupInfoParams struct {
-	ConversationID int64       `json:"conversation_id"`
+	ConversationID uuid.UUID   `json:"conversation_id"`
 	Name           pgtype.Text `json:"name"`
 	AvatarUrl      pgtype.Text `json:"avatar_url"`
 }

@@ -4,9 +4,11 @@ import (
 	"context"
 
 	sqlc_auth "github.com/DannyTuanAnh/end-to-end_encrypted_messaging_app/internal/db/sqlc/auth"
+	sqlc_chat "github.com/DannyTuanAnh/end-to-end_encrypted_messaging_app/internal/db/sqlc/chat"
 	sqlc_friend "github.com/DannyTuanAnh/end-to-end_encrypted_messaging_app/internal/db/sqlc/friend"
 	sqlc_user "github.com/DannyTuanAnh/end-to-end_encrypted_messaging_app/internal/db/sqlc/user"
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
 )
 
 type UserStatus int16
@@ -49,6 +51,9 @@ type UserRepository interface {
 }
 
 type FriendRepository interface {
+	BeginTransaction(ctx context.Context) (pgx.Tx, error)
+	RollBack(ctx context.Context, tx pgx.Tx, err *error)
+
 	GetInfoRelationship(ctx context.Context, params sqlc_friend.GetInfoRelationshipParams) (sqlc_friend.GetInfoRelationshipRow, error)
 
 	CreateFriendRequest(ctx context.Context, arg sqlc_friend.AddFriendByIdParams) (sqlc_friend.AddFriendByIdRow, error)
@@ -56,10 +61,22 @@ type FriendRepository interface {
 	GetSentFriendRequests(ctx context.Context, arg sqlc_friend.GetSentFriendRequestsParams) ([]sqlc_friend.GetSentFriendRequestsRow, error)
 	RejectFriendRequest(ctx context.Context, arg sqlc_friend.RejectFriendRequestByIdParams) error
 
+	AcceptFriendRequestById(ctx context.Context, tx pgx.Tx, arg sqlc_friend.AcceptFriendRequestByIdParams) (sqlc_friend.AcceptFriendRequestByIdRow, error)
+	CreateFriendShip(ctx context.Context, tx pgx.Tx, arg sqlc_friend.CreateFriendShipParams) error
+
 	IsUserDisabled(ctx context.Context, userID int32) (UserStatus, error)
 }
 
-type ChatRepository interface{}
+type ChatRepository interface {
+	BeginTransaction(ctx context.Context) (pgx.Tx, error)
+	RollBack(ctx context.Context, tx pgx.Tx, err *error)
+
+	IsUserDisabled(ctx context.Context, userID int32) (UserStatus, error)
+
+	CreateConversation(ctx context.Context, tx pgx.Tx, conversationType sqlc_chat.ConversationType) (uuid.UUID, error)
+	AddMembersToConversation(ctx context.Context, tx pgx.Tx, conversationID uuid.UUID, userIDs []int32) error
+	CreateSystemMessage(ctx context.Context, tx pgx.Tx, arg sqlc_chat.CreateSystemMessageParams) (sqlc_chat.SystemMessage, error)
+}
 
 type NotifyRepository interface {
 }

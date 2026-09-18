@@ -21,7 +21,11 @@ import (
 	"google.golang.org/grpc/credentials"
 )
 
-var chatPolicies = map[string][]string{}
+var chatPolicies = map[string][]string{
+	"/proto.ChatService/CreatePrivateConversation": {
+		os.Getenv("FRIEND_SERVICE_NAME"),
+	},
+}
 
 type ChatServer struct {
 	ctx    context.Context

@@ -5,11 +5,13 @@ AUTH_CONN_STRING = "postgresql://$(DB_USER):$(AUTH_DB_PASSWORD)@$(DB_HOST):$(AUT
 USER_CONN_STRING = "postgresql://$(DB_USER):$(USER_DB_PASSWORD)@$(DB_HOST):$(USER_DB_PORT)/$(USER_DB_NAME)?sslmode=$(DB_SSLMODE)"
 FRIEND_CONN_STRING = "postgresql://$(DB_USER):$(FRIEND_DB_PASSWORD)@$(DB_HOST):$(FRIEND_DB_PORT)/$(FRIEND_DB_NAME)?sslmode=$(DB_SSLMODE)"
 CHAT_CONN_STRING = "postgresql://$(DB_USER):$(CHAT_DB_PASSWORD)@$(DB_HOST):$(CHAT_DB_PORT)/$(CHAT_DB_NAME)?sslmode=$(DB_SSLMODE)"
+NOTIFY_CONN_STRING = "postgresql://$(DB_USER):$(NOTIFY_DB_PASSWORD)@$(DB_HOST):$(NOTIFY_DB_PORT)/$(NOTIFY_DB_NAME)?sslmode=$(DB_SSLMODE)"
 
 AUTH_MIGRATION_DIRS = ./internal/db/migrations/auth
 USER_MIGRATION_DIRS = ./internal/db/migrations/user
 FRIEND_MIGRATION_DIRS = ./internal/db/migrations/friend
 CHAT_MIGRATION_DIRS = ./internal/db/migrations/chat
+NOTIFY_MIGRATION_DIRS = ./internal/db/migrations/notify
 
 # import database
 import-db:
@@ -28,6 +30,8 @@ migrate-create-friend-db:
 	migrate create -ext sql -dir $(FRIEND_MIGRATION_DIRS) -seq $(name)
 migrate-create-chat-db:
 	migrate create -ext sql -dir $(CHAT_MIGRATION_DIRS) -seq $(name)
+migrate-create-notify-db:
+	migrate create -ext sql -dir $(NOTIFY_MIGRATION_DIRS) -seq $(name)
 
 
 # run all up migrations (Example: make migrate-up)
@@ -39,6 +43,8 @@ migrate-up-friend-db:
 	migrate -path $(FRIEND_MIGRATION_DIRS) -database "$(FRIEND_CONN_STRING)" up
 migrate-up-chat-db: 
 	migrate -path $(CHAT_MIGRATION_DIRS) -database "$(CHAT_CONN_STRING)" up
+migrate-up-notify-db: 
+	migrate -path $(NOTIFY_MIGRATION_DIRS) -database "$(NOTIFY_CONN_STRING)" up
 
 # rollback the last migration (Example: make migrate-down)
 migrate-down-auth-db:
@@ -49,6 +55,8 @@ migrate-down-friend-db:
 	migrate -path $(FRIEND_MIGRATION_DIRS) -database "$(FRIEND_CONN_STRING)" down 1
 migrate-down-chat-db:
 	migrate -path $(CHAT_MIGRATION_DIRS) -database "$(CHAT_CONN_STRING)" down 1
+migrate-down-notify-db:
+	migrate -path $(NOTIFY_MIGRATION_DIRS) -database "$(NOTIFY_CONN_STRING)" down 1
 
 # rollback n migration (Example: make migrate-down n=2)
 migrate-down-n-auth-db:
@@ -59,6 +67,8 @@ migrate-down-n-friend-db:
 	migrate -path $(FRIEND_MIGRATION_DIRS) -database "$(FRIEND_CONN_STRING)" down $(n)
 migrate-down-n-chat-db:
 	migrate -path $(CHAT_MIGRATION_DIRS) -database "$(CHAT_CONN_STRING)" down $(n)
+migrate-down-n-notify-db:
+	migrate -path $(NOTIFY_MIGRATION_DIRS) -database "$(NOTIFY_CONN_STRING)" down $(n)
 
 # force migration version (use with caution, Example: make migrate-force version=2) 
 migrate-force-auth-db:
@@ -69,6 +79,8 @@ migrate-force-friend-db:
 	migrate -path $(FRIEND_MIGRATION_DIRS) -database "$(FRIEND_CONN_STRING)" force $(version)
 migrate-force-chat-db:
 	migrate -path $(CHAT_MIGRATION_DIRS) -database "$(CHAT_CONN_STRING)" force $(version)
+migrate-force-notify-db:
+	migrate -path $(NOTIFY_MIGRATION_DIRS) -database "$(NOTIFY_CONN_STRING)" force $(version)
 
 # drop everything (include schema migration)
 migrate-drop:
@@ -102,5 +114,8 @@ run-user:
 
 run-friend:
 	go run cmd/friend/main.go
+
+run-chat:
+	go run cmd/chat/main.go
 
 .PHONY: import-db export-db migrate-create migrate-up migrate-down migrate-force migrate-drop migrate-goto sqlc gen-proto run-api run-auth run-user buf

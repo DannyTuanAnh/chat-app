@@ -2,23 +2,18 @@ package app
 
 import (
 	"context"
-	"encoding/json"
-	"fmt"
 	"log"
 	"net/http"
 	"os"
 
 	"github.com/gin-gonic/gin"
-	"github.com/golang-jwt/jwt/v5"
 	"github.com/redis/go-redis/v9"
 	"golang.org/x/net/http2"
 	"golang.org/x/net/http2/h2c"
 
 	"github.com/DannyTuanAnh/end-to-end_encrypted_messaging_app/internal/config"
 	sqlc_auth "github.com/DannyTuanAnh/end-to-end_encrypted_messaging_app/internal/db/sqlc/auth"
-	auth_proto "github.com/DannyTuanAnh/end-to-end_encrypted_messaging_app/internal/gen/auth"
 	"github.com/DannyTuanAnh/end-to-end_encrypted_messaging_app/internal/routes"
-	"github.com/DannyTuanAnh/end-to-end_encrypted_messaging_app/internal/sse"
 	"github.com/DannyTuanAnh/end-to-end_encrypted_messaging_app/internal/utils"
 	"github.com/DannyTuanAnh/end-to-end_encrypted_messaging_app/internal/validation"
 )
@@ -27,16 +22,16 @@ type ModelHTTP interface {
 	Routes() routes.Routes
 }
 
-type Clients struct {
-	AuthClient auth_proto.AuthServiceClient
-}
+// type Clients struct {
+// 	AuthClient auth_proto.AuthServiceClient
+// }
 
 type Application struct {
 	config  *config.Config
 	route   *gin.Engine
 	modules []ModelHTTP
 
-	Clients *Clients
+	// Clients *Clients
 }
 
 // sqlc_auth for middleware, check api_key for public api, check session for private api
@@ -176,67 +171,67 @@ func (ac *Application) RunTLS(ctx context.Context) (string, error) {
 
 }
 
-func StartRedisListener(ctx context.Context, redisClient *redis.Client) {
-	pubsub := redisClient.Subscribe(ctx, "image-processing-results")
-	ch := pubsub.Channel()
+// func StartRedisListener(ctx context.Context, redisClient *redis.Client) {
+// 	pubsub := redisClient.Subscribe(ctx, "image-processing-results")
+// 	ch := pubsub.Channel()
 
-	redisKey := utils.GetEnv("REDIS_KEY_PAYLOAD", "")
+// 	redisKey := utils.GetEnv("REDIS_KEY_PAYLOAD", "")
 
-	for msg := range ch {
-		log.Printf("Received message from Redis: %s\n", msg.Payload)
+// 	for msg := range ch {
+// 		log.Printf("Received message from Redis: %s\n", msg.Payload)
 
-		token, err := jwt.ParseWithClaims(msg.Payload, jwt.MapClaims{}, func(token *jwt.Token) (interface{}, error) {
-			if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
-				return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
-			}
+// 		token, err := jwt.ParseWithClaims(msg.Payload, jwt.MapClaims{}, func(token *jwt.Token) (interface{}, error) {
+// 			if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+// 				return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
+// 			}
 
-			return []byte(redisKey), nil
-		})
+// 			return []byte(redisKey), nil
+// 		})
 
-		if err != nil {
-			log.Printf("Failed to parse JWT: %v", err)
-			continue
-		}
+// 		if err != nil {
+// 			log.Printf("Failed to parse JWT: %v", err)
+// 			continue
+// 		}
 
-		if !token.Valid {
-			log.Printf("Invalid JWT token: %s", msg.Payload)
-			continue
-		}
+// 		if !token.Valid {
+// 			log.Printf("Invalid JWT token: %s", msg.Payload)
+// 			continue
+// 		}
 
-		claims, ok := token.Claims.(jwt.MapClaims)
-		if !ok {
-			log.Printf("Invalid JWT claims")
-			continue
-		}
+// 		claims, ok := token.Claims.(jwt.MapClaims)
+// 		if !ok {
+// 			log.Printf("Invalid JWT claims")
+// 			continue
+// 		}
 
-		userID, _ := claims["user_id"].(string)
-		if userID == "" {
-			log.Printf("Missing user_id in JWT")
-			continue
-		}
+// 		userID, _ := claims["user_id"].(string)
+// 		if userID == "" {
+// 			log.Printf("Missing user_id in JWT")
+// 			continue
+// 		}
 
-		payload := map[string]any{
-			"user_id":   userID,
-			"status":    claims["status"],
-			"file_path": claims["file_path"],
-		}
+// 		payload := map[string]any{
+// 			"user_id":   userID,
+// 			"status":    claims["status"],
+// 			"file_path": claims["file_path"],
+// 		}
 
-		b, _ := json.Marshal(payload)
+// 		b, _ := json.Marshal(payload)
 
-		// Tìm đúng User đang kết nối SSE để gửi
-		sse.MainBroker.Mu.RLock()
+// 		// Tìm đúng User đang kết nối SSE để gửi
+// 		sse.MainBroker.Mu.RLock()
 
-		userChan, ok := sse.MainBroker.Clients[userID]
-		if ok {
-			log.Printf("Dispatching SSE to user %s", userID)
-			userChan <- string(b)
-		} else {
-			log.Printf("No active SSE client for user %s", userID)
-		}
+// 		userChan, ok := sse.MainBroker.Clients[userID]
+// 		if ok {
+// 			log.Printf("Dispatching SSE to user %s", userID)
+// 			userChan <- string(b)
+// 		} else {
+// 			log.Printf("No active SSE client for user %s", userID)
+// 		}
 
-		sse.MainBroker.Mu.RUnlock()
-	}
-}
+// 		sse.MainBroker.Mu.RUnlock()
+// 	}
+// }
 
 // getModuleRoutes is a helper function that takes a slice of Model interfaces
 // and returns a slice of routes.Routes by calling the Routes() method on each module

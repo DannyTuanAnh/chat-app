@@ -7,13 +7,16 @@ package sqlc
 import (
 	"context"
 
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgconn"
 )
 
 type Querier interface {
 	AddGroupMembers(ctx context.Context, arg AddGroupMembersParams) (AddGroupMembersRow, error)
+	AddMembersToConversation(ctx context.Context, arg AddMembersToConversationParams) (pgconn.CommandTag, error)
+	CreateConversation(ctx context.Context, type_ ConversationType) (uuid.UUID, error)
 	CreateMessage(ctx context.Context, arg CreateMessageParams) (CreateMessageRow, error)
-	CreateSystemMessage(ctx context.Context, arg CreateSystemMessageParams) (CreateSystemMessageRow, error)
+	CreateSystemMessage(ctx context.Context, arg CreateSystemMessageParams) (SystemMessage, error)
 	DeleteUserStatus(ctx context.Context, userID int32) error
 	GetDisabledUser(ctx context.Context, userID int32) (UserStatus, error)
 	LeaveConversation(ctx context.Context, arg LeaveConversationParams) (LeaveConversationRow, error)

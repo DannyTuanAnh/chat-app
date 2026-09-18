@@ -66,6 +66,22 @@ services:
     volumes:
       - postgres-data-chat-service-chat-app:/var/lib/postgresql/data
 
+  notify-service:
+    image: postgres:18.2-alpine3.23
+    container_name: notify-service-chat-app
+    restart: unless-stopped
+
+    environment:
+      POSTGRES_DB: notify-service-chat-app
+      POSTGRES_USER: root
+      POSTGRES_PASSWORD: ${NOTIFY_DB_PASSWORD}
+
+    ports:
+      - "5437:5432"
+
+    volumes:
+      - postgres-data-notify-service-chat-app:/var/lib/postgresql/data
+
   redis:
     image: redis:8.6.2-alpine
     container_name: redis-chat-app
@@ -94,4 +110,5 @@ volumes:
   postgres-data-user-service-chat-app:
   postgres-data-friend-service-chat-app:
   postgres-data-chat-service-chat-app:
+  postgres-data-notify-service-chat-app:
   redis-data-chat-app:

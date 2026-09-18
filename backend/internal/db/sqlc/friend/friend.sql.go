@@ -12,6 +12,31 @@ import (
 	"github.com/jackc/pgx/v5/pgconn"
 )
 
+const acceptFriendRequestById = `-- name: AcceptFriendRequestById :one
+update friend_requests
+set is_accepted = true
+where request_id = $1 and receiver_id = $2 and is_accepted = false
+returning sender_id, receiver_id, is_accepted
+`
+
+type AcceptFriendRequestByIdParams struct {
+	RequestID  int32 `json:"request_id"`
+	ReceiverID int32 `json:"receiver_id"`
+}
+
+type AcceptFriendRequestByIdRow struct {
+	SenderID   int32 `json:"sender_id"`
+	ReceiverID int32 `json:"receiver_id"`
+	IsAccepted bool  `json:"is_accepted"`
+}
+
+func (q *Queries) AcceptFriendRequestById(ctx context.Context, arg AcceptFriendRequestByIdParams) (AcceptFriendRequestByIdRow, error) {
+	row := q.db.QueryRow(ctx, acceptFriendRequestById, arg.RequestID, arg.ReceiverID)
+	var i AcceptFriendRequestByIdRow
+	err := row.Scan(&i.SenderID, &i.ReceiverID, &i.IsAccepted)
+	return i, err
+}
+
 const addFriendById = `-- name: AddFriendById :one
 select f.status::boolean, f.message::text from send_friend_request($1, $2) as f
 `
@@ -31,6 +56,25 @@ func (q *Queries) AddFriendById(ctx context.Context, arg AddFriendByIdParams) (A
 	var i AddFriendByIdRow
 	err := row.Scan(&i.FStatus, &i.FMessage)
 	return i, err
+}
+
+const createFriendShip = `-- name: CreateFriendShip :execresult
+insert into friendships (user1_id, user2_id, established_at)
+values (least($1::int, $2::int), greatest($1::int, $2::int), $3)
+on conflict(user1_id, user2_id)
+do update set 
+    established_at = excluded.established_at
+where friendships.established_at < excluded.established_at
+`
+
+type CreateFriendShipParams struct {
+	SenderUserID   int32     `json:"sender_user_id"`
+	ReceiverUserID int32     `json:"receiver_user_id"`
+	EstablishedAt  time.Time `json:"established_at"`
+}
+
+func (q *Queries) CreateFriendShip(ctx context.Context, arg CreateFriendShipParams) (pgconn.CommandTag, error) {
+	return q.db.Exec(ctx, createFriendShip, arg.SenderUserID, arg.ReceiverUserID, arg.EstablishedAt)
 }
 
 const deleteUserStatus = `-- name: DeleteUserStatus :exec

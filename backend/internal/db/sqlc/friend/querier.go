@@ -11,7 +11,9 @@ import (
 )
 
 type Querier interface {
+	AcceptFriendRequestById(ctx context.Context, arg AcceptFriendRequestByIdParams) (AcceptFriendRequestByIdRow, error)
 	AddFriendById(ctx context.Context, arg AddFriendByIdParams) (AddFriendByIdRow, error)
+	CreateFriendShip(ctx context.Context, arg CreateFriendShipParams) (pgconn.CommandTag, error)
 	DeleteUserStatus(ctx context.Context, userID int32) error
 	GetDisabledUser(ctx context.Context, userID int32) (UserStatus, error)
 	// Get user info with friendship/friend request status

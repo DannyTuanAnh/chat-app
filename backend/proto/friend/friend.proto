@@ -12,6 +12,23 @@ service FriendService {
     rpc RejectFriendRequest(RejectFriendRequestRequest) returns (RejectFriendRequestResponse);
     rpc GetPendingFriendRequests(GetPendingFriendRequestsRequest) returns (GetPendingFriendRequestsResponse);
     rpc GetSentFriendRequests(GetSentFriendRequestsRequest) returns (GetSentFriendRequestsResponse);
+    rpc AcceptFriendRequest(AcceptFriendRequestRequest) returns (AcceptFriendRequestResponse);
+}
+
+message AcceptFriendRequestRequest {
+    int32 request_id = 1 [
+        (buf.validate.field).required = true,
+        (buf.validate.field).int32.gt = 0
+    ];
+
+    int32 current_user_id = 2 [
+        (buf.validate.field).required = true,
+        (buf.validate.field).int32.gt = 0
+    ];
+}
+
+message AcceptFriendRequestResponse {
+    bool success = 1;
 }
 
 message GetSentFriendRequestsRequest {

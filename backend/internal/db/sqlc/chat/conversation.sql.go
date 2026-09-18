@@ -9,8 +9,37 @@ import (
 	"context"
 	"time"
 
+	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgtype"
 )
+
+const addMembersToConversation = `-- name: AddMembersToConversation :execresult
+insert into conversation_members (conversation_id, user_id)
+select $1, unnest($2::int[])
+`
+
+type AddMembersToConversationParams struct {
+	ConversationID uuid.UUID `json:"conversation_id"`
+	UserIds        []int32   `json:"user_ids"`
+}
+
+func (q *Queries) AddMembersToConversation(ctx context.Context, arg AddMembersToConversationParams) (pgconn.CommandTag, error) {
+	return q.db.Exec(ctx, addMembersToConversation, arg.ConversationID, arg.UserIds)
+}
+
+const createConversation = `-- name: CreateConversation :one
+insert into conversations(type)
+values($1)
+returning id
+`
+
+func (q *Queries) CreateConversation(ctx context.Context, type_ ConversationType) (uuid.UUID, error) {
+	row := q.db.QueryRow(ctx, createConversation, type_)
+	var id uuid.UUID
+	err := row.Scan(&id)
+	return id, err
+}
 
 const createMessage = `-- name: CreateMessage :one
 insert into messages (sender_id, conversation_id, content)
@@ -19,15 +48,15 @@ returning id, sender_id, conversation_id, content, sent_at
 `
 
 type CreateMessageParams struct {
-	SenderID       int32  `json:"sender_id"`
-	ConversationID int64  `json:"conversation_id"`
-	Content        string `json:"content"`
+	SenderID       int32     `json:"sender_id"`
+	ConversationID uuid.UUID `json:"conversation_id"`
+	Content        string    `json:"content"`
 }
 
 type CreateMessageRow struct {
-	ID             int64     `json:"id"`
+	ID             uuid.UUID `json:"id"`
 	SenderID       int32     `json:"sender_id"`
-	ConversationID int64     `json:"conversation_id"`
+	ConversationID uuid.UUID `json:"conversation_id"`
 	Content        string    `json:"content"`
 	SentAt         time.Time `json:"sent_at"`
 }
@@ -52,24 +81,14 @@ returning id, conversation_id, event_type, actor_id, target_id, content, created
 `
 
 type CreateSystemMessageParams struct {
-	ConversationID int64           `json:"conversation_id"`
+	ConversationID uuid.UUID       `json:"conversation_id"`
 	EventType      SystemEventType `json:"event_type"`
 	ActorID        pgtype.Int4     `json:"actor_id"`
 	TargetID       pgtype.Int4     `json:"target_id"`
 	Content        pgtype.Text     `json:"content"`
 }
 
-type CreateSystemMessageRow struct {
-	ID             int64           `json:"id"`
-	ConversationID int64           `json:"conversation_id"`
-	EventType      SystemEventType `json:"event_type"`
-	ActorID        pgtype.Int4     `json:"actor_id"`
-	TargetID       pgtype.Int4     `json:"target_id"`
-	Content        pgtype.Text     `json:"content"`
-	CreatedAt      time.Time       `json:"created_at"`
-}
-
-func (q *Queries) CreateSystemMessage(ctx context.Context, arg CreateSystemMessageParams) (CreateSystemMessageRow, error) {
+func (q *Queries) CreateSystemMessage(ctx context.Context, arg CreateSystemMessageParams) (SystemMessage, error) {
 	row := q.db.QueryRow(ctx, createSystemMessage,
 		arg.ConversationID,
 		arg.EventType,
@@ -77,7 +96,7 @@ func (q *Queries) CreateSystemMessage(ctx context.Context, arg CreateSystemMessa
 		arg.TargetID,
 		arg.Content,
 	)
-	var i CreateSystemMessageRow
+	var i SystemMessage
 	err := row.Scan(
 		&i.ID,
 		&i.ConversationID,
@@ -117,8 +136,8 @@ where m.conversation_id = $1
 `
 
 type MarkMessagesAsReadParams struct {
-	ConversationID int64 `json:"conversation_id"`
-	UserID         int32 `json:"user_id"`
+	ConversationID uuid.UUID `json:"conversation_id"`
+	UserID         int32     `json:"user_id"`
 }
 
 // -- name: GetAllConversations :many

@@ -20,11 +20,11 @@ limit 10;
 update friend_requests
 set is_accepted = true
 where request_id = $1 and receiver_id = $2 and is_accepted = false
-returning sender_id, receiver_id;
+returning sender_id, receiver_id, is_accepted;
 
 -- name: CreateFriendShip :execresult
 insert into friendships (user1_id, user2_id, established_at)
-values (least(sqlc.arg(sender_user_id), sqlc.arg(receiver_user_id)), greatest(sqlc.arg(sender_user_id), sqlc.arg(receiver_user_id)), sqlc.arg(established_at))
+values (least(sqlc.arg(sender_user_id)::int, sqlc.arg(receiver_user_id)::int), greatest(sqlc.arg(sender_user_id)::int, sqlc.arg(receiver_user_id)::int), sqlc.arg(established_at))
 on conflict(user1_id, user2_id)
 do update set 
     established_at = excluded.established_at

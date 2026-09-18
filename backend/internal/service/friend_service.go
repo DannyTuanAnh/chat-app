@@ -3,10 +3,12 @@ package service
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"buf.build/go/protovalidate"
 	"github.com/DannyTuanAnh/end-to-end_encrypted_messaging_app/internal/client"
 	sqlc "github.com/DannyTuanAnh/end-to-end_encrypted_messaging_app/internal/db/sqlc/friend"
+	chat_proto "github.com/DannyTuanAnh/end-to-end_encrypted_messaging_app/internal/gen/chat"
 	friend_proto "github.com/DannyTuanAnh/end-to-end_encrypted_messaging_app/internal/gen/friend"
 	user_proto "github.com/DannyTuanAnh/end-to-end_encrypted_messaging_app/internal/gen/user"
 	"github.com/DannyTuanAnh/end-to-end_encrypted_messaging_app/internal/interceptor"
@@ -21,10 +23,11 @@ type friendService struct {
 	friend_proto.UnimplementedFriendServiceServer
 	friend_repo repository.FriendRepository
 	user_client *client.UserClient
+	chat_client *client.ChatClient
 	validator   protovalidate.Validator
 }
 
-func NewFriendService(friend_repo repository.FriendRepository, user_client *client.UserClient) *friendService {
+func NewFriendService(friend_repo repository.FriendRepository, user_client *client.UserClient, chat_client *client.ChatClient) *friendService {
 	v, err := protovalidate.New()
 	if err != nil {
 		panic(fmt.Sprintf("Failed to create validator: %v", err))
@@ -33,6 +36,7 @@ func NewFriendService(friend_repo repository.FriendRepository, user_client *clie
 	return &friendService{
 		friend_repo: friend_repo,
 		user_client: user_client,
+		chat_client: chat_client,
 		validator:   v,
 	}
 }
@@ -258,5 +262,61 @@ func (fs *friendService) GetSentFriendRequests(ctx context.Context, req *friend_
 
 	return &friend_proto.GetSentFriendRequestsResponse{
 		SentRequests: sentRequests,
+	}, nil
+}
+
+func (fs *friendService) AcceptFriendRequest(ctx context.Context, req *friend_proto.AcceptFriendRequestRequest) (*friend_proto.AcceptFriendRequestResponse, error) {
+	if err := fs.validator.Validate(req); err != nil {
+		return nil, validation.BuildValidationError(err)
+	}
+
+	currentUserID, ok := ctx.Value(interceptor.UserIDContextKey).(int32)
+	if !ok {
+		return nil, status.Error(codes.Unauthenticated, "user ID not found in context")
+	}
+
+	tx, err := fs.friend_repo.BeginTransaction(ctx)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "Failed to begin transaction: %v", err)
+	}
+	defer fs.friend_repo.RollBack(ctx, tx, &err)
+
+	acceptResult, err := fs.friend_repo.AcceptFriendRequestById(ctx, tx, sqlc.AcceptFriendRequestByIdParams{
+		RequestID:  req.RequestId,
+		ReceiverID: currentUserID,
+	})
+
+	if err != nil {
+		if err == repository.ErrNoRowsAcceptFriendRequestAffected {
+			return nil, status.Errorf(codes.NotFound, "Failed to accept friend request: %v", err)
+		}
+
+		return nil, status.Errorf(codes.Internal, "Failed to accept friend request: %v", err)
+	}
+
+	err = fs.friend_repo.CreateFriendShip(ctx, tx, sqlc.CreateFriendShipParams{
+		SenderUserID:   acceptResult.SenderID,
+		ReceiverUserID: currentUserID,
+		EstablishedAt:  time.Now(),
+	})
+
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "Failed to create friendship: %v", err)
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		return nil, status.Errorf(codes.Internal, "Failed to commit transaction: %v", err)
+	}
+
+	_, err = fs.chat_client.Client.CreatePrivateConversation(interceptor.WithUserIDMetadata(ctx, currentUserID), &chat_proto.CreatePrivateConversationRequest{
+		UserId_1: acceptResult.SenderID,
+		UserId_2: acceptResult.ReceiverID,
+	})
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "Failed to create private conversation: %v", err)
+	}
+
+	return &friend_proto.AcceptFriendRequestResponse{
+		Success: true,
 	}, nil
 }

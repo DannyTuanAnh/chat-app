@@ -28,6 +28,17 @@ type ServerConfig struct {
 	MaxHeaderBytes int
 }
 
+type WebsocketServerConfig struct {
+	Port              string
+	ReadTimeout       time.Duration
+	ReadHeaderTimeout time.Duration
+	WriteTimeout      time.Duration
+	IdleTimeout       time.Duration
+	ShutdownTimeout   time.Duration
+
+	MaxHeaderBytes int
+}
+
 type RedisOptions struct {
 	DialTimeout  time.Duration
 	ReadTimeout  time.Duration
@@ -72,10 +83,11 @@ type RedisGCPConfig struct {
 }
 
 type Config struct {
-	DB      DatabaseConfig
-	Server  ServerConfig
-	Service ServiceConfig
-	Redis   RedisConfig
+	DB              DatabaseConfig
+	WebsocketServer WebsocketServerConfig
+	Server          ServerConfig
+	Service         ServiceConfig
+	Redis           RedisConfig
 
 	RedisGCP RedisGCPConfig
 }
@@ -99,7 +111,45 @@ func NewConfig() *Config {
 	friendCfg := NewConfigFriendService()
 	cfg.Service.FriendServiceAddr = friendCfg.Service.FriendServiceAddr
 
+	// set chat service
+	chatCfg := NewConfigChatService()
+	cfg.Service.ChatServiceAddr = chatCfg.Service.ChatServiceAddr
+
 	return cfg
+}
+
+func NewConfigWebsocket() *Config {
+	cfg := &Config{}
+
+	// set websocket server
+	websocketCfg := newConfigWebsocketServer()
+	cfg.WebsocketServer = websocketCfg.WebsocketServer
+
+	// set user service
+	userCfg := NewConfigUserService()
+	cfg.Service.UserServiceAddr = userCfg.Service.UserServiceAddr
+
+	return cfg
+}
+
+func newConfigWebsocketServer() *Config {
+	port := os.Getenv("PORT_WS")
+	if port == "" {
+		port = "8081" // default port if not set
+	}
+
+	return &Config{
+		WebsocketServer: WebsocketServerConfig{
+			Port:              port,                                                      // cổng mà server sẽ lắng nghe
+			ReadTimeout:       utils.GetEnvTime("SV_READTIMEOUT", 5) * time.Second,       // thời gian tối đa để đọc yêu cầu từ client
+			ReadHeaderTimeout: utils.GetEnvTime("SV_READHEADERTIMEOUT", 3) * time.Second, // thời gian tối đa để đọc header của yêu cầu từ client
+			WriteTimeout:      utils.GetEnvTime("SV_WRITETIMEOUT", 10) * time.Second,     // thời gian tối đa để gửi phản hồi cho một yêu cầu
+			IdleTimeout:       utils.GetEnvTime("SV_IDLETIMEOUT", 120) * time.Second,     // thời gian chờ tối đa cho một kết nối không hoạt động (giữ kết nối tối đa 2 phút)
+			ShutdownTimeout:   utils.GetEnvTime("SV_SHUTDOWNTIMEOUT", 5) * time.Second,   // thời gian tối đa để server hoàn thành các yêu cầu đang xử lý trước khi tắt
+
+			MaxHeaderBytes: utils.GetEnvInt("SV_MAXHEADERBYTES", 16) << 10, // giới hạn kích thước header của yêu cầu (16KB)
+		},
+	}
 }
 
 func NewConfigRedisOptions() RedisOptions {

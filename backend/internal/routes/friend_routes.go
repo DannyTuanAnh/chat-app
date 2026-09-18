@@ -18,9 +18,13 @@ func NewFriendRoutes(handler *handler.FriendHandler) Routes {
 func (fr *FriendRoutes) Register(r *gin.RouterGroup) {
 	friend := r.Group("/friend")
 	{
-		friend.POST("/friend-request", fr.friend_handler.SendFriendRequest)
-		friend.GET("/friend-request/pending", fr.friend_handler.GetPendingFriendRequest)
-		friend.GET("/friend-request/sent", fr.friend_handler.GetSentFriendRequest)
-		friend.POST("/friend-request/reject", fr.friend_handler.RejectFriendRequest)
+		friendRequest := friend.Group("/request")
+		{
+			friendRequest.POST("/send", fr.friend_handler.SendFriendRequest)
+			friendRequest.GET("/pending", fr.friend_handler.GetPendingFriendRequest)
+			friendRequest.GET("/sent", fr.friend_handler.GetSentFriendRequest)
+			friendRequest.POST("/reject", fr.friend_handler.RejectFriendRequest)
+			friendRequest.POST("/accept", fr.friend_handler.AcceptFriendRequest)
+		}
 	}
 }

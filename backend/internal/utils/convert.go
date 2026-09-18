@@ -64,6 +64,19 @@ func ConvertToPgTypeTextPtr(input *string) pgtype.Text {
 	}
 }
 
+func ConvertToPgTypeIntPtr(input *int) pgtype.Int4 {
+	if input == nil || *input == 0 {
+		return pgtype.Int4{
+			Valid: false,
+		}
+	}
+
+	return pgtype.Int4{
+		Int32: int32(*input),
+		Valid: true,
+	}
+}
+
 func ConvertToPgTypeDate(input string) pgtype.Date {
 	if strings.TrimSpace(input) == "" {
 		return pgtype.Date{

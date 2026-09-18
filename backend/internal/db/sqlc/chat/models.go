@@ -148,44 +148,42 @@ func (ns NullSystemEventType) Value() (driver.Value, error) {
 }
 
 type Conversation struct {
-	ID        int64            `json:"id"`
+	ID        uuid.UUID        `json:"id"`
 	Type      ConversationType `json:"type"`
 	CreatedAt time.Time        `json:"created_at"`
 }
 
 type ConversationMember struct {
-	ConversationID int64      `json:"conversation_id"`
+	ConversationID uuid.UUID  `json:"conversation_id"`
 	UserID         int32      `json:"user_id"`
 	Role           MemberRole `json:"role"`
 	JoinedAt       time.Time  `json:"joined_at"`
 }
 
 type Group struct {
-	ConversationID int64       `json:"conversation_id"`
+	ConversationID uuid.UUID   `json:"conversation_id"`
 	Name           string      `json:"name"`
 	AvatarUrl      pgtype.Text `json:"avatar_url"`
 	CreatedAt      time.Time   `json:"created_at"`
 }
 
 type Message struct {
-	ID             int64     `json:"id"`
-	Uuid           uuid.UUID `json:"uuid"`
-	ConversationID int64     `json:"conversation_id"`
+	ID             uuid.UUID `json:"id"`
+	ConversationID uuid.UUID `json:"conversation_id"`
 	SenderID       int32     `json:"sender_id"`
 	Content        string    `json:"content"`
 	SentAt         time.Time `json:"sent_at"`
 }
 
 type MessageRead struct {
-	MessageID int64     `json:"message_id"`
+	MessageID uuid.UUID `json:"message_id"`
 	UserID    int32     `json:"user_id"`
 	ReadAt    time.Time `json:"read_at"`
 }
 
 type SystemMessage struct {
-	ID             int64           `json:"id"`
-	Uuid           uuid.UUID       `json:"uuid"`
-	ConversationID int64           `json:"conversation_id"`
+	ID             uuid.UUID       `json:"id"`
+	ConversationID uuid.UUID       `json:"conversation_id"`
 	EventType      SystemEventType `json:"event_type"`
 	ActorID        pgtype.Int4     `json:"actor_id"`
 	TargetID       pgtype.Int4     `json:"target_id"`

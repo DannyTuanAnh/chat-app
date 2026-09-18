@@ -38,6 +38,9 @@ var friendPolicies = map[string][]string{
 	"/proto.FriendService/GetSentFriendRequests": {
 		os.Getenv("API_GATEWAY_NAME"),
 	},
+	"/proto.FriendService/AcceptFriendRequest": {
+		os.Getenv("API_GATEWAY_NAME"),
+	},
 }
 
 type FriendServer struct {
@@ -96,11 +99,13 @@ func NewFriendServer(ctx context.Context, db db.FriendDB) (*FriendServer, error)
 
 	friendCfg := config.NewConfigFriendService()
 	userCfg := config.NewConfigUserService()
+	chatCfg := config.NewConfigChatService()
 
 	cfg := &config.Config{}
 
 	cfg.Service.FriendServiceAddr = friendCfg.Service.FriendServiceAddr
 	cfg.Service.UserServiceAddr = userCfg.Service.UserServiceAddr
+	cfg.Service.ChatServiceAddr = chatCfg.Service.ChatServiceAddr
 
 	cfg.Service.FriendServiceListenAddr = friendCfg.Service.FriendServiceListenAddr
 
@@ -109,8 +114,13 @@ func NewFriendServer(ctx context.Context, db db.FriendDB) (*FriendServer, error)
 		return nil, fmt.Errorf("Failed to create user client: %v", err)
 	}
 
+	chat_client, err := client.NewChatClient(cfg.Service.ChatServiceAddr, friendCertFileClient, friendKeyFileClient)
+	if err != nil {
+		return nil, fmt.Errorf("Failed to create chat client: %v", err)
+	}
+
 	friend_repo := repository.NewFriendRepository(db)
-	friend_service := service.NewFriendService(friend_repo, user_client)
+	friend_service := service.NewFriendService(friend_repo, user_client, chat_client)
 
 	s := grpc.NewServer(
 		grpc.Creds(credentials.NewTLS(tlsConfig)),

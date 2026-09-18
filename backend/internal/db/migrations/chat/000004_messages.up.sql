@@ -1,9 +1,8 @@
 create extension if not exists "pgcrypto";
 
 create table if not exists messages (
-    id bigserial primary key,
-    uuid uuid not null unique default gen_random_uuid(),
-    conversation_id bigint not null,
+    id uuid primary key default gen_random_uuid(),
+    conversation_id uuid not null,
     sender_id int not null,
     content text not null,
     sent_at timestamptz not null default now(),

@@ -17,6 +17,70 @@ func NewFriendRepository(db db.FriendDB) FriendRepository {
 	return &friendRepository{friend_repo: db}
 }
 
+func (fr *friendRepository) BeginTransaction(ctx context.Context) (pgx.Tx, error) {
+	tx, err := fr.friend_repo.DBPool.BeginTx(ctx, pgx.TxOptions{
+		IsoLevel: pgx.ReadCommitted,
+	})
+
+	if err != nil {
+		return nil, err
+	}
+
+	return tx, nil
+}
+
+func (fr *friendRepository) RollBack(ctx context.Context, tx pgx.Tx, err *error) {
+	if tx == nil {
+		return
+	}
+
+	if p := recover(); p != nil {
+		tx.Rollback(ctx)
+		panic(p)
+	}
+
+	if err != nil && *err != nil {
+		tx.Rollback(ctx)
+	}
+}
+
+func (fr *friendRepository) AcceptFriendRequestById(ctx context.Context, tx pgx.Tx, arg sqlc.AcceptFriendRequestByIdParams) (sqlc.AcceptFriendRequestByIdRow, error) {
+	if tx == nil {
+		return sqlc.AcceptFriendRequestByIdRow{}, errors.New("transaction is nil")
+	}
+
+	row, err := fr.friend_repo.DB.WithTx(tx).AcceptFriendRequestById(ctx, arg)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return sqlc.AcceptFriendRequestByIdRow{}, ErrNoRowsAcceptFriendRequestAffected
+		}
+		return sqlc.AcceptFriendRequestByIdRow{}, err
+	}
+
+	if !row.IsAccepted {
+		return sqlc.AcceptFriendRequestByIdRow{}, ErrNoRowsAcceptFriendRequestAffected
+	}
+
+	return row, nil
+}
+
+func (fr *friendRepository) CreateFriendShip(ctx context.Context, tx pgx.Tx, arg sqlc.CreateFriendShipParams) error {
+	if tx == nil {
+		return errors.New("transaction is nil")
+	}
+
+	result, err := fr.friend_repo.DB.WithTx(tx).CreateFriendShip(ctx, arg)
+	if err != nil {
+		return err
+	}
+
+	if result.RowsAffected() == 0 {
+		return ErrFriendshipAlreadyLatest
+	}
+
+	return nil
+}
+
 func (fr *friendRepository) GetInfoRelationship(ctx context.Context, params sqlc.GetInfoRelationshipParams) (sqlc.GetInfoRelationshipRow, error) {
 	info, err := fr.friend_repo.DB.GetInfoRelationship(ctx, params)
 	if err != nil {

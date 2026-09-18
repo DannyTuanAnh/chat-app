@@ -14,9 +14,8 @@ create type system_event_type as enum (
 );
 
 create table if not exists system_messages (
-    id bigserial primary key,
-    uuid uuid not null unique default gen_random_uuid(),
-    conversation_id bigint not null,
+    id uuid primary key default gen_random_uuid(),
+    conversation_id uuid not null,
     event_type system_event_type not null,
     actor_id int,
     target_id int,

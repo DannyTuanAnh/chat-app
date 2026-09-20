@@ -30,9 +30,9 @@ type AuthRepository interface {
 	CreateIdentity(ctx context.Context, arg sqlc_auth.CreateIdentityParams) error
 	ActiveIdentity(ctx context.Context, arg sqlc_auth.ActiveIdentityParams) error
 	DisableIdentity(ctx context.Context, arg sqlc_auth.DisableIdentityParams) error
-	CreateSession(ctx context.Context, userID int32) (uuid.UUID, error)
-	CheckSession(ctx context.Context, sessionID uuid.UUID) (sqlc_auth.CheckSessionRow, error)
-	Logout(ctx context.Context, sessionID uuid.UUID) error
+	CreateSession(ctx context.Context, arg sqlc_auth.CreateSessionParams) (uuid.UUID, error)
+	CreateDevice(ctx context.Context, arg sqlc_auth.CreateDeviceParams) error
+	Logout(ctx context.Context, arg sqlc_auth.RevokeSessionAndDeviceParams) error
 	LogoutAll(ctx context.Context, userId int32) error
 }
 

@@ -18,6 +18,11 @@ message LoginRequest {
     (buf.validate.field).required = true,
     (buf.validate.field).string.min_len = 10
   ];
+
+  string device_id = 2 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.uuid = true
+  ];
 }
 
 message LoginResponse {
@@ -28,6 +33,11 @@ message LoginResponse {
 
 message LogoutRequest {
   string session_id = 1 [
+    (buf.validate.field).required = true,
+    (buf.validate.field).string.uuid = true
+  ];
+
+  string device_id = 2 [
     (buf.validate.field).required = true,
     (buf.validate.field).string.uuid = true
   ];

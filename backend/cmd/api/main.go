@@ -70,7 +70,7 @@ func main() {
 	// Chỉ log lỗi, không kill container
 	if err != nil {
 		log.Printf("Server error: %s: %v", msg, err)
-		select {} // giữ process sống để Cloud Run không kill ngay
+		// select {} // giữ process sống để Cloud Run không kill ngay
 	}
 
 	log.Println(msg)

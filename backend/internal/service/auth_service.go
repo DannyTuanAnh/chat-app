@@ -54,6 +54,11 @@ func (s *authService) LoginGoogle(ctx context.Context, req *auth_proto.LoginRequ
 		return nil, validation.BuildValidationError(err)
 	}
 
+	deviceID, err := uuid.Parse(req.DeviceId)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "Failed to parse device ID: %v", err)
+	}
+
 	tokenResp, err := s.ExchangeGoogleCode(req.AuthorCode)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "Failed to exchange Google code: %v", err)
@@ -216,30 +221,67 @@ func (s *authService) LoginGoogle(ctx context.Context, req *auth_proto.LoginRequ
 		}
 	}
 
-	version, err := s.redis_memory.Get(ctx, fmt.Sprintf("user:%d:session_version", userID)).Int()
+	sessionVersion, err := s.redis_memory.Get(ctx, fmt.Sprintf("user:%d:session_version", userID)).Int()
 	if err != nil {
 		log.Println("Error in get session_version (in auth service layer): ", err)
 	}
 
-	if version == 0 {
+	if sessionVersion == 0 {
 		if err := s.redis_memory.SetNX(ctx, fmt.Sprintf("user:%d:session_version", userID), 1, 0).Err(); err != nil {
 			log.Println("Error in create session_version if redis didn't exist session_version before (in auth service layer): ", err)
 		}
-		version, err = s.redis_memory.Get(ctx, fmt.Sprintf("user:%d:session_version", userID)).Int()
+
+		sessionVersion, err = s.redis_memory.Get(ctx, fmt.Sprintf("user:%d:session_version", userID)).Int()
 		if err != nil {
 			log.Println("Error in get session_version after setNX (in auth service layer): ", err)
-			version = 1
+			sessionVersion = 1
 		}
 	}
 
-	session, err := s.auth_repo.CreateSession(ctx, userID)
+	deviceVersion, err := s.redis_memory.Get(ctx, fmt.Sprintf("user:%d:device_version", userID)).Int()
+	if err != nil {
+		log.Println("Error in get device_version (in auth service layer): ", err)
+	}
+
+	if deviceVersion == 0 {
+		if err := s.redis_memory.SetNX(ctx, fmt.Sprintf("user:%d:device_version", userID), 1, 0).Err(); err != nil {
+			log.Println("Error in create device_version if redis didn't exist device_version before (in auth service layer): ", err)
+		}
+
+		deviceVersion, err = s.redis_memory.Get(ctx, fmt.Sprintf("user:%d:device_version", userID)).Int()
+		if err != nil {
+			log.Println("Error in get device_version after setNX (in auth service layer): ", err)
+			deviceVersion = 1
+		}
+	}
+
+	argCreateDevice := sqlc.CreateDeviceParams{
+		UserID:   userID,
+		DeviceID: deviceID,
+	}
+
+	err = s.auth_repo.CreateDevice(ctx, argCreateDevice)
+	if err != nil {
+		if errors.Is(err, repository.ErrCannotCreateDevice) {
+			return nil, status.Errorf(codes.ResourceExhausted, "Device limit reached for user: %v", err)
+		}
+		return nil, status.Errorf(codes.Internal, "Failed to create device: %v", err)
+	}
+
+	argCreateSession := sqlc.CreateSessionParams{
+		UserID:   userID,
+		DeviceID: deviceID,
+	}
+
+	session, err := s.auth_repo.CreateSession(ctx, argCreateSession)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "Failed to create session: %v", err)
 	}
 
 	sessionRedis := models.SessionRedis{
 		UserID:         userID,
-		SessionVersion: version,
+		SessionVersion: sessionVersion,
+		DeviceVersion:  deviceVersion,
 		Valid:          true,
 	}
 
@@ -248,7 +290,7 @@ func (s *authService) LoginGoogle(ctx context.Context, req *auth_proto.LoginRequ
 		log.Println("Error in marshal session data (in auth service layer): ", err)
 	}
 
-	err = s.redis_memory.Set(ctx, fmt.Sprintf("session:%s", session), sessionJson, 24*7*time.Hour).Err()
+	err = s.redis_memory.Set(ctx, fmt.Sprintf("session:%s:device_id:%s", session, deviceID), sessionJson, 24*7*time.Hour).Err()
 	if err != nil {
 		log.Println("Error in set session with marshal data in Redis (in auth service layer): ", err)
 	}
@@ -349,12 +391,22 @@ func (s *authService) Logout(ctx context.Context, req *auth_proto.LogoutRequest)
 		return nil, status.Errorf(codes.Internal, "Failed to parse session ID: %v", err)
 	}
 
-	err = s.auth_repo.Logout(ctx, sessionId)
+	deviceId, err := uuid.Parse(req.DeviceId)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "Failed to parse device ID: %v", err)
+	}
+
+	arg := sqlc.RevokeSessionAndDeviceParams{
+		SessionID: sessionId,
+		DeviceID:  deviceId,
+	}
+
+	err = s.auth_repo.Logout(ctx, arg)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "Failed to logout: %v", err)
 	}
 
-	if err := s.redis_memory.Del(ctx, fmt.Sprintf("session:%s", req.SessionId)).Err(); err != nil {
+	if err := s.redis_memory.Del(ctx, fmt.Sprintf("session:%s:device_id:%s", sessionId, deviceId)).Err(); err != nil {
 		log.Println("Error in delete session in Redis (in auth service layer): ", err)
 	}
 

@@ -41,7 +41,7 @@ func NewWebSocketServer(ctx context.Context, db sqlc_auth.Querier, rdb *redis.Cl
 
 	userService := service.NewWebsocketService(userClient)
 
-	websocketHandler := handler.NewWebSocketHandler(userService)
+	websocketHandler := handler.NewWebSocketHandler(userService, manager)
 
 	r.Use(middleware.CORSMiddleware(),
 		middleware.RateLimitMiddleware(ctx, rdb, 60, 100), // 100 requests per 60 seconds

@@ -37,5 +37,6 @@ type GoogleBirthdayResponse struct {
 type SessionRedis struct {
 	UserID         int32 `json:"user_id"`
 	SessionVersion int   `json:"session_version"`
+	DeviceVersion  int   `json:"device_version"`
 	Valid          bool  `json:"valid"`
 }

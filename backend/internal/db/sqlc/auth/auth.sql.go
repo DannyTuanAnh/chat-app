@@ -31,21 +31,38 @@ func (q *Queries) ActiveIdentity(ctx context.Context, arg ActiveIdentityParams) 
 }
 
 const checkSession = `-- name: CheckSession :one
-select user_id, revoked, revoke_at
-from sessions 
-where session_id = $1
+select 
+    s.session_id,
+    s.user_id,
+    s.device_id,
+    s.revoked
+from sessions s
+join devices d on s.device_id = d.device_id and d.user_id = s.user_id
+where s.session_id = $1::uuid
+    and s.device_id = $2::uuid
 `
 
-type CheckSessionRow struct {
-	UserID   int32              `json:"user_id"`
-	Revoked  bool               `json:"revoked"`
-	RevokeAt pgtype.Timestamptz `json:"revoke_at"`
+type CheckSessionParams struct {
+	SessionID uuid.UUID `json:"session_id"`
+	DeviceID  uuid.UUID `json:"device_id"`
 }
 
-func (q *Queries) CheckSession(ctx context.Context, sessionID uuid.UUID) (CheckSessionRow, error) {
-	row := q.db.QueryRow(ctx, checkSession, sessionID)
+type CheckSessionRow struct {
+	SessionID uuid.UUID   `json:"session_id"`
+	UserID    int32       `json:"user_id"`
+	DeviceID  pgtype.UUID `json:"device_id"`
+	Revoked   bool        `json:"revoked"`
+}
+
+func (q *Queries) CheckSession(ctx context.Context, arg CheckSessionParams) (CheckSessionRow, error) {
+	row := q.db.QueryRow(ctx, checkSession, arg.SessionID, arg.DeviceID)
 	var i CheckSessionRow
-	err := row.Scan(&i.UserID, &i.Revoked, &i.RevokeAt)
+	err := row.Scan(
+		&i.SessionID,
+		&i.UserID,
+		&i.DeviceID,
+		&i.Revoked,
+	)
 	return i, err
 }
 
@@ -66,6 +83,25 @@ insert into api_keys (key_hash) values ($1)
 func (q *Queries) CreateAPIKey(ctx context.Context, keyHash string) error {
 	_, err := q.db.Exec(ctx, createAPIKey, keyHash)
 	return err
+}
+
+const createDevice = `-- name: CreateDevice :execresult
+insert into devices (device_id, user_id) 
+select $2::uuid, $1
+where (
+    select count(*)
+    from devices 
+    where user_id = $1 and revoked_at is null
+) < 3
+`
+
+type CreateDeviceParams struct {
+	UserID   int32     `json:"user_id"`
+	DeviceID uuid.UUID `json:"device_id"`
+}
+
+func (q *Queries) CreateDevice(ctx context.Context, arg CreateDeviceParams) (pgconn.CommandTag, error) {
+	return q.db.Exec(ctx, createDevice, arg.UserID, arg.DeviceID)
 }
 
 const createIdentity = `-- name: CreateIdentity :exec
@@ -91,11 +127,16 @@ func (q *Queries) CreateIdentity(ctx context.Context, arg CreateIdentityParams) 
 }
 
 const createSession = `-- name: CreateSession :one
-insert into sessions (user_id) values ($1) returning session_id
+insert into sessions (user_id, device_id) values ($1,$2::uuid) returning session_id
 `
 
-func (q *Queries) CreateSession(ctx context.Context, userID int32) (uuid.UUID, error) {
-	row := q.db.QueryRow(ctx, createSession, userID)
+type CreateSessionParams struct {
+	UserID   int32     `json:"user_id"`
+	DeviceID uuid.UUID `json:"device_id"`
+}
+
+func (q *Queries) CreateSession(ctx context.Context, arg CreateSessionParams) (uuid.UUID, error) {
+	row := q.db.QueryRow(ctx, createSession, arg.UserID, arg.DeviceID)
 	var session_id uuid.UUID
 	err := row.Scan(&session_id)
 	return session_id, err
@@ -156,7 +197,15 @@ func (q *Queries) RevokeAllAPIKeys(ctx context.Context) error {
 }
 
 const revokeAllSessions = `-- name: RevokeAllSessions :exec
-update sessions set revoked = true, revoke_at = now() where user_id = $1
+with revoked_devices as (
+    update devices d
+    set d.revoked_at = now(),
+        d.last_seen_at = now()
+    where d.user_id = $1
+)
+update sessions s
+set s.revoked = true, s.revoke_at = now()
+where s.user_id = $1
 `
 
 func (q *Queries) RevokeAllSessions(ctx context.Context, userID int32) error {
@@ -164,12 +213,25 @@ func (q *Queries) RevokeAllSessions(ctx context.Context, userID int32) error {
 	return err
 }
 
-const revokeSession = `-- name: RevokeSession :exec
-update sessions set revoked = true, revoke_at = now() where session_id = $1
+const revokeSessionAndDevice = `-- name: RevokeSessionAndDevice :exec
+with revoked_device as (
+    update devices d
+    set d.revoked_at = now(),
+        d.last_seen_at = now()
+    where d.device_id = $2 
+)
+update sessions s
+set s.revoked = true, s.revoke_at = now() 
+where s.session_id = $1
 `
 
-func (q *Queries) RevokeSession(ctx context.Context, sessionID uuid.UUID) error {
-	_, err := q.db.Exec(ctx, revokeSession, sessionID)
+type RevokeSessionAndDeviceParams struct {
+	SessionID uuid.UUID `json:"session_id"`
+	DeviceID  uuid.UUID `json:"device_id"`
+}
+
+func (q *Queries) RevokeSessionAndDevice(ctx context.Context, arg RevokeSessionAndDeviceParams) error {
+	_, err := q.db.Exec(ctx, revokeSessionAndDevice, arg.SessionID, arg.DeviceID)
 	return err
 }
 

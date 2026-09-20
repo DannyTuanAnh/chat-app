@@ -8,6 +8,7 @@ var (
 	ErrNotFoundIdentityID        = errors.New("identity not found")
 	ErrCannotRestoreUserIdentity = errors.New("cannot restore user identity, identity has been disabled for more than 30 days")
 	ErrNotFoundSessionID         = errors.New("session not found")
+	ErrCannotCreateDevice        = errors.New("cannot create device, device already exists or user does not exist")
 
 	// User Repository Errors
 	ErrCannotDeleteUser                  = errors.New("cannot delete user, user does not exist or has already been deleted")

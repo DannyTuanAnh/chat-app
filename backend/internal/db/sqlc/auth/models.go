@@ -74,9 +74,18 @@ type AuthIdentity struct {
 	RevokedAt      pgtype.Timestamptz `json:"revoked_at"`
 }
 
+type Device struct {
+	DeviceID   uuid.UUID          `json:"device_id"`
+	UserID     int32              `json:"user_id"`
+	CreatedAt  pgtype.Timestamptz `json:"created_at"`
+	LastSeenAt pgtype.Timestamptz `json:"last_seen_at"`
+	RevokedAt  pgtype.Timestamptz `json:"revoked_at"`
+}
+
 type Session struct {
 	SessionID uuid.UUID          `json:"session_id"`
 	UserID    int32              `json:"user_id"`
+	DeviceID  pgtype.UUID        `json:"device_id"`
 	Revoked   bool               `json:"revoked"`
 	RevokeAt  pgtype.Timestamptz `json:"revoke_at"`
 	CreatedAt time.Time          `json:"created_at"`

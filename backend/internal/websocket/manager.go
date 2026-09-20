@@ -6,17 +6,16 @@ import (
 	"sync"
 
 	"github.com/coder/websocket"
-	"github.com/google/uuid"
 )
 
 type ClientManager struct {
-	Clients map[uuid.UUID]map[uuid.UUID]*Client
+	Clients map[int32]map[string]*Client
 	mu      sync.RWMutex
 }
 
 func NewClientManager() *ClientManager {
 	return &ClientManager{
-		Clients: make(map[uuid.UUID]map[uuid.UUID]*Client),
+		Clients: make(map[int32]map[string]*Client),
 	}
 }
 
@@ -25,7 +24,7 @@ func (cm *ClientManager) AddClient(client *Client) {
 	defer cm.mu.Unlock()
 
 	if _, exists := cm.Clients[client.UserID]; !exists {
-		cm.Clients[client.UserID] = make(map[uuid.UUID]*Client)
+		cm.Clients[client.UserID] = make(map[string]*Client)
 	}
 
 	cm.Clients[client.UserID][client.DeviceID] = client
@@ -64,6 +63,18 @@ func (cm *ClientManager) RemoveClient(client *Client) bool {
 	return false
 }
 
+func (cm *ClientManager) IsUserOffline(userID int32) bool {
+	cm.mu.RLock()
+	defer cm.mu.RUnlock()
+
+	devices, exists := cm.Clients[userID]
+	if !exists || len(devices) == 0 {
+		return true
+	}
+
+	return false
+}
+
 func (cm *ClientManager) CloseAll() {
 	cm.mu.Lock()
 	defer cm.mu.Unlock()
@@ -74,10 +85,10 @@ func (cm *ClientManager) CloseAll() {
 		}
 	}
 
-	cm.Clients = make(map[uuid.UUID]map[uuid.UUID]*Client)
+	cm.Clients = make(map[int32]map[string]*Client)
 }
 
-func (cm *ClientManager) GetClient(clientID, deviceID uuid.UUID) (*Client, bool) {
+func (cm *ClientManager) GetClient(clientID int32, deviceID string) (*Client, bool) {
 	cm.mu.RLock()
 	defer cm.mu.RUnlock()
 
@@ -86,9 +97,9 @@ func (cm *ClientManager) GetClient(clientID, deviceID uuid.UUID) (*Client, bool)
 }
 
 type SendToParams struct {
-	TargetClientID  uuid.UUID
-	CurrentClientID uuid.UUID
-	CurrentDeviceID uuid.UUID
+	TargetClientID  int32
+	CurrentClientID int32
+	CurrentDeviceID string
 	MessageType     websocket.MessageType
 	Data            []byte
 }
@@ -99,13 +110,13 @@ func (cm *ClientManager) SendTo(ctx context.Context, arg SendToParams) error {
 	targetClientDevices, targetExists := cm.Clients[arg.TargetClientID]
 	if !targetExists {
 		cm.mu.RUnlock()
-		return fmt.Errorf("client with ID %s not found", arg.TargetClientID)
+		return fmt.Errorf("client with ID %d not found", arg.TargetClientID)
 	}
 
 	currentClientDevices, currentExists := cm.Clients[arg.CurrentClientID]
 	if !currentExists {
 		cm.mu.RUnlock()
-		return fmt.Errorf("current client with ID %s not found", arg.CurrentClientID)
+		return fmt.Errorf("current client with ID %d not found", arg.CurrentClientID)
 	}
 
 	recipient := make([]*Client, 0, len(targetClientDevices)+len(currentClientDevices)-1)
@@ -124,7 +135,7 @@ func (cm *ClientManager) SendTo(ctx context.Context, arg SendToParams) error {
 
 	for _, client := range recipient {
 		if err := client.Conn.Write(ctx, arg.MessageType, arg.Data); err != nil {
-			return fmt.Errorf("error sending message to client %s: %v", client.UserID, err)
+			return fmt.Errorf("error sending message to client %d: %v", client.UserID, err)
 		}
 	}
 
@@ -132,8 +143,8 @@ func (cm *ClientManager) SendTo(ctx context.Context, arg SendToParams) error {
 }
 
 type BroadcastParams struct {
-	CurrentClientID       uuid.UUID
-	CurrentClientDeviceID uuid.UUID
+	CurrentClientID       int32
+	CurrentClientDeviceID string
 	MessageType           websocket.MessageType
 	Data                  []byte
 }
@@ -161,7 +172,7 @@ func (cm *ClientManager) Broadcast(ctx context.Context, arg BroadcastParams) {
 
 	for _, client := range clients {
 		if err := client.Conn.Write(ctx, arg.MessageType, arg.Data); err != nil {
-			fmt.Printf("Error broadcasting to client %s: %v\n", client.UserID, err)
+			fmt.Printf("Error broadcasting to client %d: %v\n", client.UserID, err)
 		}
 	}
 }

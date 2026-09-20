@@ -13,18 +13,19 @@ import (
 
 type Querier interface {
 	ActiveIdentity(ctx context.Context, arg ActiveIdentityParams) (pgconn.CommandTag, error)
-	CheckSession(ctx context.Context, sessionID uuid.UUID) (CheckSessionRow, error)
+	CheckSession(ctx context.Context, arg CheckSessionParams) (CheckSessionRow, error)
 	CleanupSessionTable(ctx context.Context) error
 	// manage apikeys
 	CreateAPIKey(ctx context.Context, keyHash string) error
+	CreateDevice(ctx context.Context, arg CreateDeviceParams) (pgconn.CommandTag, error)
 	CreateIdentity(ctx context.Context, arg CreateIdentityParams) error
-	CreateSession(ctx context.Context, userID int32) (uuid.UUID, error)
+	CreateSession(ctx context.Context, arg CreateSessionParams) (uuid.UUID, error)
 	DisableIdentity(ctx context.Context, arg DisableIdentityParams) (pgconn.CommandTag, error)
 	FindExistingIdentity(ctx context.Context, arg FindExistingIdentityParams) (FindExistingIdentityRow, error)
 	RevokeAPIKeyByKey(ctx context.Context, keyHash string) error
 	RevokeAllAPIKeys(ctx context.Context) error
 	RevokeAllSessions(ctx context.Context, userID int32) error
-	RevokeSession(ctx context.Context, sessionID uuid.UUID) error
+	RevokeSessionAndDevice(ctx context.Context, arg RevokeSessionAndDeviceParams) error
 	ValidateAPIKey(ctx context.Context, keyHash string) (bool, error)
 }
 

@@ -73,8 +73,21 @@ func (ar *authRepository) DisableIdentity(ctx context.Context, arg sqlc.DisableI
 	return nil
 }
 
-func (ar *authRepository) CreateSession(ctx context.Context, userID int32) (uuid.UUID, error) {
-	sessionID, err := ar.auth_repo.DB.CreateSession(ctx, userID)
+func (ar *authRepository) CreateDevice(ctx context.Context, arg sqlc.CreateDeviceParams) error {
+	result, err := ar.auth_repo.DB.CreateDevice(ctx, arg)
+	if err != nil {
+		return err
+	}
+
+	if result.RowsAffected() == 0 {
+		return ErrCannotCreateDevice
+	}
+
+	return nil
+}
+
+func (ar *authRepository) CreateSession(ctx context.Context, arg sqlc.CreateSessionParams) (uuid.UUID, error) {
+	sessionID, err := ar.auth_repo.DB.CreateSession(ctx, arg)
 	if err != nil {
 		return uuid.Nil, err
 	}
@@ -82,21 +95,8 @@ func (ar *authRepository) CreateSession(ctx context.Context, userID int32) (uuid
 	return sessionID, nil
 }
 
-func (ar *authRepository) CheckSession(ctx context.Context, sessionID uuid.UUID) (sqlc.CheckSessionRow, error) {
-	results, err := ar.auth_repo.DB.CheckSession(ctx, sessionID)
-	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
-			return sqlc.CheckSessionRow{}, ErrNotFoundSessionID
-		}
-
-		return sqlc.CheckSessionRow{}, err
-	}
-
-	return results, nil
-}
-
-func (ar *authRepository) Logout(ctx context.Context, sessionID uuid.UUID) error {
-	err := ar.auth_repo.DB.RevokeSession(ctx, sessionID)
+func (ar *authRepository) Logout(ctx context.Context, arg sqlc.RevokeSessionAndDeviceParams) error {
+	err := ar.auth_repo.DB.RevokeSessionAndDevice(ctx, arg)
 	if err != nil {
 		return err
 	}

@@ -9,6 +9,7 @@ import (
 	"github.com/DannyTuanAnh/end-to-end_encrypted_messaging_app/internal/dto"
 	auth_proto "github.com/DannyTuanAnh/end-to-end_encrypted_messaging_app/internal/gen/auth"
 	"github.com/DannyTuanAnh/end-to-end_encrypted_messaging_app/internal/middleware"
+	"github.com/google/uuid"
 
 	"github.com/DannyTuanAnh/end-to-end_encrypted_messaging_app/internal/utils"
 	"github.com/DannyTuanAnh/end-to-end_encrypted_messaging_app/internal/validation"
@@ -26,15 +27,21 @@ func NewAuthHandler(auth_client *client.AuthClient) *AuthHandler {
 }
 
 func (h *AuthHandler) LoginGoogle(ctx *gin.Context) {
-	var input dto.RequestLoginGoogle
+	var req dto.RequestLoginGoogle
 
-	if err := ctx.ShouldBindJSON(&input); err != nil {
+	if err := ctx.ShouldBindJSON(&req); err != nil {
 		utils.ResponseValidator(ctx, validation.HandleValidationErrors(err))
 		return
 	}
 
+	if _, err := uuid.Parse(req.DeviceID); err != nil {
+		utils.ResponseValidator(ctx, validation.HandleValidationErrors(errors.New("invalid device_id format")))
+		return
+	}
+
 	authReq := &auth_proto.LoginRequest{
-		AuthorCode: input.AuthCode,
+		AuthorCode: req.AuthCode,
+		DeviceId:   req.DeviceID,
 	}
 
 	resp, err := h.auth_client.Client.LoginGoogle(ctx, authReq)
@@ -64,8 +71,15 @@ func (h *AuthHandler) Logout(ctx *gin.Context) {
 		return
 	}
 
+	deviceID, exist := ctx.Get("device_id")
+	if !exist {
+		utils.ResponseErrorAbort(ctx, utils.NewError("device_id not found in context", utils.ErrCodeUnauthorized))
+		return
+	}
+
 	req := &auth_proto.LogoutRequest{
 		SessionId: sessionID.(string),
+		DeviceId:  deviceID.(string),
 	}
 
 	_, err := h.auth_client.Client.Logout(ctx, req)

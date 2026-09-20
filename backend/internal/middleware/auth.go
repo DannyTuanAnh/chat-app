@@ -22,6 +22,7 @@ const (
 	CTX_USER_ID_KEY    identity = "user_id"
 	CTX_USER_UUID_KEY  identity = "user_uuid"
 	CTX_SESSION_ID_KEY identity = "session_id"
+	CTX_DEVICE_ID_KEY  identity = "device_id"
 )
 
 func AuthMiddleware(db sqlc.Querier, rdb *redis.Client) gin.HandlerFunc {
@@ -35,7 +36,13 @@ func AuthMiddleware(db sqlc.Querier, rdb *redis.Client) gin.HandlerFunc {
 			return
 		}
 
-		data, err := rdb.Get(ctx, fmt.Sprintf("session:%s", sessionId)).Bytes()
+		deviceId, err, errCode := ValidateDeviceID(ctx)
+		if err != nil {
+			utils.ResponseErrorAbort(ctx, utils.WrapError(err, "Failed to validate device ID", errCode))
+			return
+		}
+
+		data, err := rdb.Get(ctx, fmt.Sprintf("session:%s:device_id:%s", sessionId, deviceId)).Bytes()
 		if err == nil && len(data) > 0 {
 			log.Println("Session found in Redis")
 			var valueSession models.SessionRedis
@@ -44,14 +51,25 @@ func AuthMiddleware(db sqlc.Querier, rdb *redis.Client) gin.HandlerFunc {
 				return
 			}
 
-			version, err := rdb.Get(ctx, fmt.Sprintf("user:%d:session_version", valueSession.UserID)).Int()
+			if !valueSession.Valid {
+				utils.ResponseErrorAbort(ctx, utils.NewError("Invalid session", utils.ErrCodeUnauthorized))
+				return
+			}
+
+			sessionVersion, err := rdb.Get(ctx, fmt.Sprintf("user:%d:session_version", valueSession.UserID)).Int()
 			if err != nil {
 				utils.ResponseErrorAbort(ctx, utils.WrapError(err, "Failed to get session version from Redis", utils.ErrCodeInternal))
 				return
 			}
 
-			if !valueSession.Valid || version != valueSession.SessionVersion {
-				utils.ResponseErrorAbort(ctx, utils.NewError("Invalid session", utils.ErrCodeUnauthorized))
+			deviceVersion, err := rdb.Get(ctx, fmt.Sprintf("user:%d:device_version", valueSession.UserID)).Int()
+			if err != nil {
+				utils.ResponseErrorAbort(ctx, utils.WrapError(err, "Failed to get device version from Redis", utils.ErrCodeInternal))
+				return
+			}
+
+			if valueSession.SessionVersion != sessionVersion || valueSession.DeviceVersion != deviceVersion {
+				utils.ResponseErrorAbort(ctx, utils.NewError("Session or device version mismatch", utils.ErrCodeUnauthorized))
 				return
 			}
 
@@ -65,7 +83,12 @@ func AuthMiddleware(db sqlc.Querier, rdb *redis.Client) gin.HandlerFunc {
 		} else if errors.Is(err, redis.Nil) {
 			log.Println("Session not found in Redis, checking database...")
 
-			result, err := db.CheckSession(ctx, sessionId)
+			arg := sqlc.CheckSessionParams{
+				SessionID: sessionId,
+				DeviceID:  deviceId,
+			}
+
+			result, err := db.CheckSession(ctx, arg)
 			if err != nil {
 				if errors.Is(err, sql.ErrNoRows) {
 					utils.ResponseErrorAbort(ctx, utils.NewError("Session not found", utils.ErrCodeUnauthorized))
@@ -79,27 +102,47 @@ func AuthMiddleware(db sqlc.Querier, rdb *redis.Client) gin.HandlerFunc {
 				utils.ResponseErrorAbort(ctx, utils.NewError("Session revoked", utils.ErrCodeUnauthorized))
 				return
 			}
+
 			userId = result.UserID
 
-			version, err := rdb.Get(ctx, fmt.Sprintf("user:%d:session_version", userId)).Int()
+			sessionVersion, err := rdb.Get(ctx, fmt.Sprintf("user:%d:session_version", userId)).Int()
 			if err != nil {
 				log.Println("Error in get session_version (in service layer): ", err)
 			}
 
-			if version == 0 {
+			if sessionVersion == 0 {
 				if err := rdb.SetNX(ctx, fmt.Sprintf("user:%d:session_version", userId), 1, 0).Err(); err != nil {
 					log.Println("Error in create session_version if redis didn't exist session_version before (in service layer): ", err)
 				}
-				version, err = rdb.Get(ctx, fmt.Sprintf("user:%d:session_version", userId)).Int()
+				sessionVersion, err = rdb.Get(ctx, fmt.Sprintf("user:%d:session_version", userId)).Int()
+
 				if err != nil {
 					log.Println("Error in get session_version after setNX (in service layer): ", err)
-					version = 1
+					sessionVersion = 1
+				}
+			}
+
+			deviceVersion, err := rdb.Get(ctx, fmt.Sprintf("user:%d:device_version", userId)).Int()
+			if err != nil {
+				log.Println("Error in get device_version (in service layer): ", err)
+			}
+
+			if deviceVersion == 0 {
+				if err := rdb.SetNX(ctx, fmt.Sprintf("user:%d:device_version", userId), 1, 0).Err(); err != nil {
+					log.Println("Error in create device_version if redis didn't exist device_version before (in service layer): ", err)
+				}
+
+				deviceVersion, err = rdb.Get(ctx, fmt.Sprintf("user:%d:device_version", userId)).Int()
+				if err != nil {
+					log.Println("Error in get device_version after setNX (in service layer): ", err)
+					deviceVersion = 1
 				}
 			}
 
 			sessionRedis := models.SessionRedis{
 				UserID:         userId,
-				SessionVersion: version,
+				SessionVersion: sessionVersion,
+				DeviceVersion:  deviceVersion,
 				Valid:          result.Revoked,
 			}
 
@@ -108,7 +151,7 @@ func AuthMiddleware(db sqlc.Querier, rdb *redis.Client) gin.HandlerFunc {
 				log.Println("Error in marshal session data (in service layer): ", err)
 			}
 
-			err = rdb.Set(ctx, fmt.Sprintf("session:%d", result.UserID), sessionBytes, 24*7*time.Hour).Err()
+			err = rdb.Set(ctx, fmt.Sprintf("session:%s:device_id:%s", sessionId, deviceId), sessionBytes, 24*7*time.Hour).Err()
 			if err != nil {
 				log.Println("Error in set session with marshal data in Redis (in service layer): ", err)
 			}
@@ -121,6 +164,7 @@ func AuthMiddleware(db sqlc.Querier, rdb *redis.Client) gin.HandlerFunc {
 		ctx.Set(CTX_USER_ID_KEY, userId)
 		ctx.Set(CTX_USER_UUID_KEY, userUUID.String())
 		ctx.Set(CTX_SESSION_ID_KEY, sessionId.String())
+		ctx.Set(CTX_DEVICE_ID_KEY, deviceId.String())
 
 		ctx.Next()
 

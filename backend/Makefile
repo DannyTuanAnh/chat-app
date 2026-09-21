@@ -118,4 +118,7 @@ run-friend:
 run-chat:
 	go run cmd/chat/main.go
 
+run-websocket:
+	go run cmd/websocket/main.go
+
 .PHONY: import-db export-db migrate-create migrate-up migrate-down migrate-force migrate-drop migrate-goto sqlc gen-proto run-api run-auth run-user buf

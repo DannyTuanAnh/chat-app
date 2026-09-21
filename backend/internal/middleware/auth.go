@@ -31,6 +31,8 @@ func AuthMiddleware(db sqlc.Querier, rdb *redis.Client) gin.HandlerFunc {
 		var userUUID uuid.UUID
 
 		sessionId, err, errCode := ValidateSession(ctx)
+		log.Println("Session ID from cookie:", sessionId)
+		log.Println("Session ID error:", err)
 		if err != nil {
 			utils.ResponseErrorAbort(ctx, utils.WrapError(err, "Failed to validate session", errCode))
 			return

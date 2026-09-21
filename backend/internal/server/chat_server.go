@@ -17,6 +17,7 @@ import (
 	"github.com/DannyTuanAnh/end-to-end_encrypted_messaging_app/internal/repository"
 	"github.com/DannyTuanAnh/end-to-end_encrypted_messaging_app/internal/service"
 	"github.com/DannyTuanAnh/end-to-end_encrypted_messaging_app/internal/utils"
+	"github.com/redis/go-redis/v9"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 )
@@ -33,7 +34,7 @@ type ChatServer struct {
 	server *grpc.Server
 }
 
-func NewChatServer(ctx context.Context, db db.ChatDB) (*ChatServer, error) {
+func NewChatServer(ctx context.Context, db db.ChatDB, rdb *redis.Client) (*ChatServer, error) {
 	chatCertFile := utils.GetEnv("PATH_CERT_CHAT_SERVICE", "")
 	chatKeyFile := utils.GetEnv("PATH_KEY_CHAT_SERVICE", "")
 
@@ -86,7 +87,7 @@ func NewChatServer(ctx context.Context, db db.ChatDB) (*ChatServer, error) {
 	cfg.Service.ChatServiceListenAddr = chatCfg.Service.ChatServiceListenAddr
 
 	chat_repo := repository.NewChatRepository(db)
-	chat_service := service.NewChatService(chat_repo)
+	chat_service := service.NewChatService(chat_repo, rdb, ctx)
 
 	s := grpc.NewServer(
 		grpc.Creds(credentials.NewTLS(tlsConfig)),

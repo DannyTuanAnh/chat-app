@@ -8,6 +8,7 @@ import (
 	"syscall"
 
 	"github.com/DannyTuanAnh/end-to-end_encrypted_messaging_app/internal/db"
+	redis_memory "github.com/DannyTuanAnh/end-to-end_encrypted_messaging_app/internal/redis"
 	"github.com/DannyTuanAnh/end-to-end_encrypted_messaging_app/internal/server"
 )
 
@@ -25,8 +26,17 @@ func main() {
 	}
 	defer chatDB.Close()
 
+	// --- Init Redis
+	log.Println("Init Redis...")
+	rdb, err := redis_memory.InitRedis()
+	if err != nil {
+		log.Fatalf("Redis init failed: %v", err)
+	}
+	defer rdb.CloseRedis()
+	log.Println("Redis connected")
+
 	// 3. Initialize application
-	chatServer, err := server.NewChatServer(ctx, chatDB)
+	chatServer, err := server.NewChatServer(ctx, chatDB, rdb.RDB)
 	if err != nil {
 		log.Fatalf("Failed to initialize user server: %v", err)
 		return

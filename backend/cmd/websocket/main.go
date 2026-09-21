@@ -10,7 +10,6 @@ import (
 	"github.com/DannyTuanAnh/end-to-end_encrypted_messaging_app/internal/db"
 	redis_memory "github.com/DannyTuanAnh/end-to-end_encrypted_messaging_app/internal/redis"
 	"github.com/DannyTuanAnh/end-to-end_encrypted_messaging_app/internal/server"
-	"github.com/redis/go-redis/v9"
 )
 
 func main() {
@@ -36,19 +35,10 @@ func main() {
 	defer rdb.CloseRedis()
 	log.Println("Redis connected")
 
-	var redisClient *redis.Client
+	websocket := server.NewWebSocketServer(ctx, authDB.DB, rdb.RDB)
 
-	//local test
-	if rdb != nil {
-		redisClient = rdb.RDB
-	}
-
-	// //deploy
-	// if rdb != nil {
-	// 	redisClient = rdb.Redis_GCP
-	// }
-
-	websocket := server.NewWebSocketServer(ctx, authDB.DB, redisClient)
+	log.Println("Starting Redis listener...")
+	go websocket.StartRedisListener(ctx)
 
 	log.Println("Starting Websocket server...")
 	msg, err := websocket.RunTLS(ctx)

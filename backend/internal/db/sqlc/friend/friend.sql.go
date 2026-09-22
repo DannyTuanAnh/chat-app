@@ -97,6 +97,46 @@ func (q *Queries) GetDisabledUser(ctx context.Context, userID int32) (UserStatus
 	return i, err
 }
 
+const getFriendList = `-- name: GetFriendList :many
+select 
+    (case 
+        when user1_id = $1 then user2_id 
+        else user1_id
+    end)::int as friend_ids
+from friendships
+where 
+    (user1_id = $1 and user2_id > $2) 
+    or
+    (user2_id = $1 and user1_id > $2)
+order by friend_ids
+limit 10
+`
+
+type GetFriendListParams struct {
+	CurrentUserID int32 `json:"current_user_id"`
+	LastFriendID  int32 `json:"last_friend_id"`
+}
+
+func (q *Queries) GetFriendList(ctx context.Context, arg GetFriendListParams) ([]int32, error) {
+	rows, err := q.db.Query(ctx, getFriendList, arg.CurrentUserID, arg.LastFriendID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []int32{}
+	for rows.Next() {
+		var friend_ids int32
+		if err := rows.Scan(&friend_ids); err != nil {
+			return nil, err
+		}
+		items = append(items, friend_ids)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getInfoRelationship = `-- name: GetInfoRelationship :one
 select     
     -- Friend request status (if exists)
@@ -220,8 +260,6 @@ func (q *Queries) GetSentFriendRequests(ctx context.Context, arg GetSentFriendRe
 const rejectFriendRequestById = `-- name: RejectFriendRequestById :execresult
 
 
-
-
 delete from friend_requests
 where request_id = $1 and receiver_id = $2 and is_accepted=false
 `
@@ -231,26 +269,6 @@ type RejectFriendRequestByIdParams struct {
 	ReceiverID int32 `json:"receiver_id"`
 }
 
-// -- name: GetFriendsList :many
-// with friend_ids as (
-//
-//	select f.user1_id as id from friendships f where f.user2_id = $1
-//	union all
-//	select f.user2_id as id from friendships f where f.user1_id = $1
-//
-// )
-// select
-//
-//	u.uuid,
-//	u.user_id,
-//	coalesce(p.name, u.display_name) as name,
-//	p.avatar_url,
-//	u.is_active
-//
-// from users u
-// left join profiles p on u.user_id = p.user_id
-// join friend_ids f on u.user_id = f.id
-// order by coalesce(p.name, u.display_name);
 // -- name: SearchFriendByName :many
 // with friend_ids as (
 //

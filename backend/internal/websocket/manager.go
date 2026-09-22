@@ -71,18 +71,6 @@ func (cm *ClientManager) RemoveClient(client *Client) bool {
 	return false
 }
 
-func (cm *ClientManager) IsUserOffline(userID int32) bool {
-	cm.mu.RLock()
-	defer cm.mu.RUnlock()
-
-	devices, exists := cm.Clients[userID]
-	if !exists || len(devices) == 0 {
-		return true
-	}
-
-	return false
-}
-
 func (cm *ClientManager) CloseAll() {
 	cm.mu.Lock()
 
@@ -181,6 +169,9 @@ func (cm *ClientManager) SendTo(ctx context.Context, arg SendToParams) error {
 		select {
 		case <-ctx.Done():
 			return fmt.Errorf("context canceled while sending to client %d", client.UserID)
+		case <-client.Ctx.Done():
+			log.Println("Client context done while sending to client", client.UserID, "device", client.DeviceID, "skipping client")
+			continue
 		case client.SendChan <- message:
 			// Successfully sent to client's send channel
 		default:
@@ -217,6 +208,9 @@ func (cm *ClientManager) SendToUsers(ctx context.Context, arg SendToUsersParams)
 			select {
 			case <-ctx.Done():
 				return fmt.Errorf("context canceled while sending to users")
+			case <-client.Ctx.Done():
+				log.Println("Client context done while sending to users, skipping client", client.UserID, "device", client.DeviceID)
+				continue
 			case client.SendChan <- message:
 				log.Println("Sent message to client", client.UserID, "device", client.DeviceID)
 				// Successfully sent to client's send channel

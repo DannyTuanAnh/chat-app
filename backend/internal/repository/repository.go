@@ -64,6 +64,8 @@ type FriendRepository interface {
 	AcceptFriendRequestById(ctx context.Context, tx pgx.Tx, arg sqlc_friend.AcceptFriendRequestByIdParams) (sqlc_friend.AcceptFriendRequestByIdRow, error)
 	CreateFriendShip(ctx context.Context, tx pgx.Tx, arg sqlc_friend.CreateFriendShipParams) error
 
+	GetFriendList(ctx context.Context, arg sqlc_friend.GetFriendListParams) ([]int32, error)
+
 	IsUserDisabled(ctx context.Context, userID int32) (UserStatus, error)
 }
 

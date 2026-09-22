@@ -19,3 +19,7 @@ type GetSentFriendRequestsRequest struct {
 type AcceptFriendRequestRequest struct {
 	RequestID int32 `json:"request_id" binding:"required,min=1"`
 }
+
+type GetFriendListRequest struct {
+	LastFriendID int32 `form:"last_friend_id" binding:"omitempty,min=0"`
+}

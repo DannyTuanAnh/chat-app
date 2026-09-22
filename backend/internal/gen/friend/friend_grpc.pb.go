@@ -25,6 +25,8 @@ const (
 	FriendService_GetPendingFriendRequests_FullMethodName = "/proto.FriendService/GetPendingFriendRequests"
 	FriendService_GetSentFriendRequests_FullMethodName    = "/proto.FriendService/GetSentFriendRequests"
 	FriendService_AcceptFriendRequest_FullMethodName      = "/proto.FriendService/AcceptFriendRequest"
+	FriendService_GetFriendList_FullMethodName            = "/proto.FriendService/GetFriendList"
+	FriendService_SearchFriendByName_FullMethodName       = "/proto.FriendService/SearchFriendByName"
 )
 
 // FriendServiceClient is the client API for FriendService service.
@@ -37,6 +39,8 @@ type FriendServiceClient interface {
 	GetPendingFriendRequests(ctx context.Context, in *GetPendingFriendRequestsRequest, opts ...grpc.CallOption) (*GetPendingFriendRequestsResponse, error)
 	GetSentFriendRequests(ctx context.Context, in *GetSentFriendRequestsRequest, opts ...grpc.CallOption) (*GetSentFriendRequestsResponse, error)
 	AcceptFriendRequest(ctx context.Context, in *AcceptFriendRequestRequest, opts ...grpc.CallOption) (*AcceptFriendRequestResponse, error)
+	GetFriendList(ctx context.Context, in *GetFriendListRequest, opts ...grpc.CallOption) (*GetFriendListResponse, error)
+	SearchFriendByName(ctx context.Context, in *SearchFriendByNameRequest, opts ...grpc.CallOption) (*SearchFriendByNameResponse, error)
 }
 
 type friendServiceClient struct {
@@ -107,6 +111,26 @@ func (c *friendServiceClient) AcceptFriendRequest(ctx context.Context, in *Accep
 	return out, nil
 }
 
+func (c *friendServiceClient) GetFriendList(ctx context.Context, in *GetFriendListRequest, opts ...grpc.CallOption) (*GetFriendListResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetFriendListResponse)
+	err := c.cc.Invoke(ctx, FriendService_GetFriendList_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *friendServiceClient) SearchFriendByName(ctx context.Context, in *SearchFriendByNameRequest, opts ...grpc.CallOption) (*SearchFriendByNameResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(SearchFriendByNameResponse)
+	err := c.cc.Invoke(ctx, FriendService_SearchFriendByName_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // FriendServiceServer is the server API for FriendService service.
 // All implementations must embed UnimplementedFriendServiceServer
 // for forward compatibility.
@@ -117,6 +141,8 @@ type FriendServiceServer interface {
 	GetPendingFriendRequests(context.Context, *GetPendingFriendRequestsRequest) (*GetPendingFriendRequestsResponse, error)
 	GetSentFriendRequests(context.Context, *GetSentFriendRequestsRequest) (*GetSentFriendRequestsResponse, error)
 	AcceptFriendRequest(context.Context, *AcceptFriendRequestRequest) (*AcceptFriendRequestResponse, error)
+	GetFriendList(context.Context, *GetFriendListRequest) (*GetFriendListResponse, error)
+	SearchFriendByName(context.Context, *SearchFriendByNameRequest) (*SearchFriendByNameResponse, error)
 	mustEmbedUnimplementedFriendServiceServer()
 }
 
@@ -144,6 +170,12 @@ func (UnimplementedFriendServiceServer) GetSentFriendRequests(context.Context, *
 }
 func (UnimplementedFriendServiceServer) AcceptFriendRequest(context.Context, *AcceptFriendRequestRequest) (*AcceptFriendRequestResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method AcceptFriendRequest not implemented")
+}
+func (UnimplementedFriendServiceServer) GetFriendList(context.Context, *GetFriendListRequest) (*GetFriendListResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetFriendList not implemented")
+}
+func (UnimplementedFriendServiceServer) SearchFriendByName(context.Context, *SearchFriendByNameRequest) (*SearchFriendByNameResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method SearchFriendByName not implemented")
 }
 func (UnimplementedFriendServiceServer) mustEmbedUnimplementedFriendServiceServer() {}
 func (UnimplementedFriendServiceServer) testEmbeddedByValue()                       {}
@@ -274,6 +306,42 @@ func _FriendService_AcceptFriendRequest_Handler(srv interface{}, ctx context.Con
 	return interceptor(ctx, in, info, handler)
 }
 
+func _FriendService_GetFriendList_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetFriendListRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(FriendServiceServer).GetFriendList(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: FriendService_GetFriendList_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(FriendServiceServer).GetFriendList(ctx, req.(*GetFriendListRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _FriendService_SearchFriendByName_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SearchFriendByNameRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(FriendServiceServer).SearchFriendByName(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: FriendService_SearchFriendByName_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(FriendServiceServer).SearchFriendByName(ctx, req.(*SearchFriendByNameRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // FriendService_ServiceDesc is the grpc.ServiceDesc for FriendService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -304,6 +372,14 @@ var FriendService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "AcceptFriendRequest",
 			Handler:    _FriendService_AcceptFriendRequest_Handler,
+		},
+		{
+			MethodName: "GetFriendList",
+			Handler:    _FriendService_GetFriendList_Handler,
+		},
+		{
+			MethodName: "SearchFriendByName",
+			Handler:    _FriendService_SearchFriendByName_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

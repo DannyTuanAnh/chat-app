@@ -24,6 +24,44 @@ func NewFriendHandler(friend_client *client.FriendClient) *FriendHandler {
 	}
 }
 
+func (fh *FriendHandler) GetFriendList(ctx *gin.Context) {
+	var request dto.GetFriendListRequest
+	if err := ctx.ShouldBindQuery(&request); err != nil {
+		utils.ResponseValidator(ctx, validation.HandleValidationErrors(err))
+		return
+	}
+
+	currentUserID, exist := ctx.Get(middleware.CTX_USER_ID_KEY)
+	if !exist {
+		utils.ResponseErrorAbort(ctx, utils.NewError("User ID not found in context", utils.ErrCodeNotFound))
+		return
+	}
+
+	currentUserIDInt, ok := currentUserID.(int32)
+	if !ok {
+		utils.ResponseErrorAbort(ctx, utils.NewError("User ID in context has invalid type", utils.ErrCodeInternal))
+		return
+	}
+
+	if currentUserIDInt <= 0 {
+		utils.ResponseValidator(ctx, validation.HandleValidationErrors(errors.New("UserID must greater than 0")))
+		return
+	}
+
+	arg := friend_proto.GetFriendListRequest{
+		CurrentUserId: currentUserIDInt,
+		LastFriendId:  request.LastFriendID,
+	}
+
+	results, err := fh.friend_client.Client.GetFriendList(interceptor.WithUserIDMetadata(ctx.Request.Context(), currentUserIDInt), &arg)
+	if err != nil {
+		utils.WriteGRPCErrorToGin(ctx, err)
+		return
+	}
+
+	utils.ResponseSuccessWithData(ctx, http.StatusOK, results)
+}
+
 func (fh *FriendHandler) SendFriendRequest(ctx *gin.Context) {
 	var request dto.SendFriendRequestRequest
 	if err := ctx.ShouldBindJSON(&request); err != nil {

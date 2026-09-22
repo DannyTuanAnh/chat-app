@@ -41,6 +41,62 @@ func NewFriendService(friend_repo repository.FriendRepository, user_client *clie
 	}
 }
 
+func (fs *friendService) GetFriendList(ctx context.Context, req *friend_proto.GetFriendListRequest) (*friend_proto.GetFriendListResponse, error) {
+	if err := fs.validator.Validate(req); err != nil {
+		return nil, validation.BuildValidationError(err)
+	}
+
+	arg := sqlc.GetFriendListParams{
+		CurrentUserID: req.CurrentUserId,
+		LastFriendID:  req.LastFriendId,
+	}
+
+	friendIDs, err := fs.friend_repo.GetFriendList(ctx, arg)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "Failed to get friend list: %v", err)
+	}
+
+	if len(friendIDs) == 0 {
+		return &friend_proto.GetFriendListResponse{
+			FriendList: []*friend_proto.UserSummary{},
+		}, nil
+	}
+
+	request := &user_proto.GetProfileByUserIDsRequest{
+		UserIds: friendIDs,
+	}
+
+	userData, err := fs.user_client.Client.GetProfileByUserIDs(interceptor.WithUserIDMetadata(ctx, req.CurrentUserId), request)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "Failed to get pending friend requests: %v", err)
+	}
+
+	userByID := make(map[int32]*user_proto.GetProfileByUserIDsResponse_UserProfile, len(userData.Profiles))
+	for _, profile := range userData.Profiles {
+		userByID[profile.UserId] = profile
+	}
+
+	friendList := make([]*friend_proto.UserSummary, 0, len(friendIDs))
+	for _, friendID := range friendIDs {
+		userProfile, ok := userByID[friendID]
+		if !ok {
+			return nil, status.Errorf(codes.Internal, "Failed to get friend list: user profile not found for friend ID %d", friendID)
+		}
+
+		friend := &friend_proto.UserSummary{
+			UserId:    userProfile.UserId,
+			Username:  userProfile.Name,
+			AvatarUrl: userProfile.AvatarUrl,
+		}
+
+		friendList = append(friendList, friend)
+	}
+
+	return &friend_proto.GetFriendListResponse{
+		FriendList: friendList,
+	}, nil
+}
+
 func (fs *friendService) GetRelationship(ctx context.Context, req *friend_proto.GetRelationshipRequest) (*friend_proto.GetRelationshipResponse, error) {
 	if err := fs.validator.Validate(req); err != nil {
 		return nil, validation.BuildValidationError(err)

@@ -30,42 +30,19 @@ do update set
     established_at = excluded.established_at
 where friendships.established_at < excluded.established_at;
 
--- -- name: GetFriendsList :many
--- with friend_ids as (
---     select f.user1_id as id from friendships f where f.user2_id = $1
---     union all
---     select f.user2_id as id from friendships f where f.user1_id = $1
--- )
-
--- select 
---     u.uuid, 
---     u.user_id,
---     coalesce(p.name, u.display_name) as name, 
---     p.avatar_url,
---     u.is_active
--- from users u
--- left join profiles p on u.user_id = p.user_id
--- join friend_ids f on u.user_id = f.id
--- order by coalesce(p.name, u.display_name);
-
--- -- name: SearchFriendByName :many
--- with friend_ids as (
---     select f.user1_id as id from friendships f where f.user2_id = $1
---     union all
---     select f.user2_id as id from friendships f where f.user1_id = $1
--- )
-
--- select 
---     u.uuid, 
---     u.user_id,
---     coalesce(p.name, u.display_name) as name, 
---     p.avatar_url,
---     u.is_active
--- from users u
--- left join profiles p on u.user_id = p.user_id
--- join friend_ids f on u.user_id = f.id
--- where coalesce(p.name, u.display_name) ilike '%' || $2 || '%' 
--- order by coalesce(p.name, u.display_name);
+-- name: GetFriendList :many
+select 
+    (case 
+        when user1_id = sqlc.arg(current_user_id) then user2_id 
+        else user1_id
+    end)::int as friend_ids
+from friendships
+where 
+    (user1_id = sqlc.arg(current_user_id) and user2_id > sqlc.arg(last_friend_id)) 
+    or
+    (user2_id = sqlc.arg(current_user_id) and user1_id > sqlc.arg(last_friend_id))
+order by friend_ids
+limit 10;
 
 -- name: RejectFriendRequestById :execresult
 delete from friend_requests

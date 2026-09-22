@@ -16,28 +16,13 @@ type Querier interface {
 	CreateFriendShip(ctx context.Context, arg CreateFriendShipParams) (pgconn.CommandTag, error)
 	DeleteUserStatus(ctx context.Context, userID int32) error
 	GetDisabledUser(ctx context.Context, userID int32) (UserStatus, error)
+	GetFriendList(ctx context.Context, arg GetFriendListParams) ([]int32, error)
 	// Get user info with friendship/friend request status
 	// Check if there's a pending/accepted friend request
 	// Check if already friends
 	GetInfoRelationship(ctx context.Context, arg GetInfoRelationshipParams) (GetInfoRelationshipRow, error)
 	GetPendingFriendRequests(ctx context.Context, arg GetPendingFriendRequestsParams) ([]GetPendingFriendRequestsRow, error)
 	GetSentFriendRequests(ctx context.Context, arg GetSentFriendRequestsParams) ([]GetSentFriendRequestsRow, error)
-	// -- name: GetFriendsList :many
-	// with friend_ids as (
-	//     select f.user1_id as id from friendships f where f.user2_id = $1
-	//     union all
-	//     select f.user2_id as id from friendships f where f.user1_id = $1
-	// )
-	// select
-	//     u.uuid,
-	//     u.user_id,
-	//     coalesce(p.name, u.display_name) as name,
-	//     p.avatar_url,
-	//     u.is_active
-	// from users u
-	// left join profiles p on u.user_id = p.user_id
-	// join friend_ids f on u.user_id = f.id
-	// order by coalesce(p.name, u.display_name);
 	// -- name: SearchFriendByName :many
 	// with friend_ids as (
 	//     select f.user1_id as id from friendships f where f.user2_id = $1

@@ -9,3 +9,4 @@ create table if not exists friendships (
 );
 
 create index idx_friendships_user2_id on friendships(user2_id);
+create index idx_friendships_user2_use1 on friendships(user2_id, user1_id);

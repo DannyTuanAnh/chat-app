@@ -54,10 +54,8 @@ func (h *WebSocketHandler) HandleWebsocket(ctx *gin.Context) {
 		utils.ResponseErrorAbort(ctx, utils.NewError("Failed to accept websocket connection", utils.ErrCodeInternal))
 		return
 	}
-	defer conn.Close(websocket.StatusNormalClosure, "Closing connection")
 
 	clientCtx, cancel := context.WithCancel(context.Background())
-	defer cancel()
 
 	client := &ws.Client{
 		UserID:   currentUserID,
@@ -73,13 +71,15 @@ func (h *WebSocketHandler) HandleWebsocket(ctx *gin.Context) {
 	h.manager.AddClient(client)
 
 	defer func() {
+		client.Close()
+
 		becomeOffline := h.manager.RemoveClient(client)
 
 		if becomeOffline {
-			if off := h.manager.IsUserOffline(currentUserID); off {
-				lastSeen[currentUserID] = time.Now()
-				log.Println("User", currentUserID, "is now offline. Last seen at:", lastSeen[currentUserID])
-			}
+
+			lastSeen[currentUserID] = time.Now()
+			log.Println("User", currentUserID, "is now offline. Last seen at:", lastSeen[currentUserID])
+
 		}
 	}()
 
@@ -87,7 +87,7 @@ func (h *WebSocketHandler) HandleWebsocket(ctx *gin.Context) {
 
 	go client.WritePump()
 
-	go ws.Heartbeat(clientCtx, cancel, conn)
+	go client.Heartbeat()
 
 	client.ReadPump(h.handleClientMessage)
 }

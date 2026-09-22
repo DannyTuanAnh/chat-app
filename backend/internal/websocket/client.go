@@ -4,8 +4,14 @@ import (
 	"context"
 	"log"
 	"sync"
+	"time"
 
 	"github.com/coder/websocket"
+)
+
+const (
+	PING_INTERVAL = 25 * time.Second
+	PONG_TIMEOUT  = 10 * time.Second
 )
 
 type MessageHandler func(
@@ -37,7 +43,9 @@ func (client *Client) Close() {
 	client.CloseOnce.Do(func() {
 		log.Printf("Closing connection for user %d, device %s", client.UserID, client.DeviceID)
 
-		client.Cancel()
+		if client.Cancel != nil {
+			client.Cancel()
+		}
 
 		_ = client.Conn.Close(websocket.StatusNormalClosure, "Closing connection")
 	})
@@ -85,6 +93,31 @@ func (client *Client) WritePump() {
 			}
 
 			log.Println("Sent message to user", client.UserID, "device", client.DeviceID, "message:", string(message.Data))
+		}
+	}
+}
+
+func (client *Client) Heartbeat() {
+	ticker := time.NewTicker(PING_INTERVAL)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-client.Ctx.Done():
+			return
+		case <-ticker.C:
+			pingCtx, pingCancel := context.WithTimeout(client.Ctx, PONG_TIMEOUT)
+
+			err := client.Conn.Ping(pingCtx)
+			pingCancel()
+
+			if err != nil {
+				log.Printf("heartbeat failed: user=%d device=%s error=%v", client.UserID, client.DeviceID, err)
+				client.Close()
+				return
+			}
+
+			log.Println("heartbeat: pong received")
 		}
 	}
 }

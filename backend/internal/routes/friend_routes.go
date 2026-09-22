@@ -18,6 +18,8 @@ func NewFriendRoutes(handler *handler.FriendHandler) Routes {
 func (fr *FriendRoutes) Register(r *gin.RouterGroup) {
 	friend := r.Group("/friend")
 	{
+		friend.GET("/list", fr.friend_handler.GetFriendList)
+
 		friendRequest := friend.Group("/request")
 		{
 			friendRequest.POST("/send", fr.friend_handler.SendFriendRequest)

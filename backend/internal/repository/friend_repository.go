@@ -44,6 +44,15 @@ func (fr *friendRepository) RollBack(ctx context.Context, tx pgx.Tx, err *error)
 	}
 }
 
+func (fr *friendRepository) GetFriendList(ctx context.Context, arg sqlc.GetFriendListParams) ([]int32, error) {
+	rows, err := fr.friend_repo.DB.GetFriendList(ctx, arg)
+	if err != nil {
+		return nil, err
+	}
+
+	return rows, nil
+}
+
 func (fr *friendRepository) AcceptFriendRequestById(ctx context.Context, tx pgx.Tx, arg sqlc.AcceptFriendRequestByIdParams) (sqlc.AcceptFriendRequestByIdRow, error) {
 	if tx == nil {
 		return sqlc.AcceptFriendRequestByIdRow{}, errors.New("transaction is nil")

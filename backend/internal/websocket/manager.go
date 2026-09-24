@@ -5,15 +5,30 @@ import (
 	"fmt"
 	"log"
 	"sync"
+	"time"
 
 	"github.com/coder/websocket"
 )
 
 type RealtimeEvent struct {
-	Event          string  `json:"event_type"`
-	UserIDs        []int32 `json:"user_ids"`
-	ConversationID string  `json:"conversation_id"`
-	Message        string  `json:"message"`
+	Event          string    `json:"event_type"`
+	FromUserID     int32     `json:"from_user_id"`
+	FromDeviceID   string    `json:"from_device_id"`
+	ToUserIDs      []int32   `json:"to_user_ids"`
+	ConversationID string    `json:"conversation_id"`
+	Message        Content   `json:"message"`
+	SentAt         time.Time `json:"sent_at"`
+}
+
+type Content struct {
+	FromUserID    int32  `json:"from_user_id"`
+	Message       string `json:"message"`
+	SystemMessage bool   `json:"system_message"`
+}
+
+type WSResponse struct {
+	Data  any    `json:"data,omitempty"`
+	Error string `json:"error,omitempty"`
 }
 
 type ClientManager struct {
@@ -124,20 +139,27 @@ func (cm *ClientManager) GetClient(clientID int32, deviceID string) (*Client, bo
 }
 
 type SendToParams struct {
-	TargetClientID  int32
+	TargetClientIDs []int32
 	CurrentClientID int32
 	CurrentDeviceID string
 	MessageType     websocket.MessageType
-	Data            []byte
+	Data            Content
 }
 
 func (cm *ClientManager) SendTo(ctx context.Context, arg SendToParams) error {
 	cm.mu.RLock()
 
-	targetClientDevices, targetExists := cm.Clients[arg.TargetClientID]
-	if !targetExists {
-		cm.mu.RUnlock()
-		return fmt.Errorf("client with ID %d not found", arg.TargetClientID)
+	targetClientDevices := make([]*Client, 0)
+	for _, targetClientID := range arg.TargetClientIDs {
+		devices, exists := cm.Clients[targetClientID]
+		if !exists {
+			cm.mu.RUnlock()
+			return fmt.Errorf("client with ID %d not found", targetClientID)
+		}
+
+		for _, device := range devices {
+			targetClientDevices = append(targetClientDevices, device)
+		}
 	}
 
 	currentClientDevices, currentExists := cm.Clients[arg.CurrentClientID]
@@ -148,9 +170,7 @@ func (cm *ClientManager) SendTo(ctx context.Context, arg SendToParams) error {
 
 	recipient := make([]*Client, 0, len(targetClientDevices)+len(currentClientDevices)-1)
 
-	for _, targetClientDevice := range targetClientDevices {
-		recipient = append(recipient, targetClientDevice)
-	}
+	recipient = append(recipient, targetClientDevices...)
 
 	for _, currentClientDevice := range currentClientDevices {
 		if currentClientDevice.DeviceID != arg.CurrentDeviceID {
@@ -186,7 +206,7 @@ func (cm *ClientManager) SendTo(ctx context.Context, arg SendToParams) error {
 type SendToUsersParams struct {
 	UserIDs     []int32
 	MessageType websocket.MessageType
-	Data        []byte
+	Data        Content
 }
 
 func (cm *ClientManager) SendToUsers(ctx context.Context, arg SendToUsersParams) error {
@@ -228,7 +248,7 @@ type BroadcastParams struct {
 	CurrentClientID       int32
 	CurrentClientDeviceID string
 	MessageType           websocket.MessageType
-	Data                  []byte
+	Data                  Content
 }
 
 func (cm *ClientManager) Broadcast(ctx context.Context, arg BroadcastParams) {

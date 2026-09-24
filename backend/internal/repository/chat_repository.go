@@ -2,7 +2,9 @@ package repository
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
+	"time"
 
 	"github.com/DannyTuanAnh/end-to-end_encrypted_messaging_app/internal/db"
 	sqlc "github.com/DannyTuanAnh/end-to-end_encrypted_messaging_app/internal/db/sqlc/chat"
@@ -122,4 +124,66 @@ func (cr *chatRepository) CreateSystemMessage(ctx context.Context, tx pgx.Tx, ar
 	}
 
 	return row, nil
+}
+
+type CreateMessageRow struct {
+	ID             uuid.UUID `json:"id"`
+	ConversationID uuid.UUID `json:"conversation_id"`
+	SenderID       int32     `json:"sender_id"`
+	Content        string    `json:"content"`
+	SentAt         time.Time `json:"sent_at"`
+	Members        []int32   `json:"members"`
+}
+
+type MemberInfo struct {
+	UserID int32 `json:"user_id"`
+}
+
+func (cr *chatRepository) CreateMessage(ctx context.Context, arg sqlc.CreateMessageParams) (CreateMessageRow, error) {
+	row, err := cr.chat_repository.DB.CreateMessage(ctx, arg)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return CreateMessageRow{}, ErrorUserNotInConversation
+		}
+
+		return CreateMessageRow{}, err
+	}
+
+	var members []MemberInfo
+	if err := json.Unmarshal(row.Members, &members); err != nil {
+		return CreateMessageRow{}, err
+	}
+
+	memberIDs := make([]int32, len(members)-1)
+	for i, member := range members {
+		if member.UserID != arg.SenderID {
+			memberIDs[i] = member.UserID
+		}
+	}
+
+	return CreateMessageRow{
+		ID:             row.ID,
+		ConversationID: row.ConversationID,
+		SenderID:       row.SenderID,
+		Content:        row.Content,
+		SentAt:         row.SentAt,
+		Members:        memberIDs,
+	}, nil
+}
+
+func (cr *chatRepository) GetConversationMembers(ctx context.Context, arg sqlc.GetConversationMembersParams) ([]int32, error) {
+	members, err := cr.chat_repository.DB.GetConversationMembers(ctx, arg)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, ErrorUserNotInConversation
+		}
+
+		return nil, err
+	}
+
+	if len(members) < 2 {
+		return nil, errors.New("Something wrong in database, conversation must have at least two members")
+	}
+
+	return members, nil
 }

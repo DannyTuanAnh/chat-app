@@ -7,6 +7,7 @@ package sqlc
 
 import (
 	"context"
+	"encoding/json"
 	"time"
 
 	"github.com/google/uuid"
@@ -42,34 +43,43 @@ func (q *Queries) CreateConversation(ctx context.Context, type_ ConversationType
 }
 
 const createMessage = `-- name: CreateMessage :one
-insert into messages (sender_id, conversation_id, content)
-values ($1, $2, $3)
-returning id, sender_id, conversation_id, content, sent_at
+with members as (
+  select user_id from conversation_members
+  where conversation_id = $1
+)
+insert into messages (conversation_id, sender_id, content)
+select $1, $2, $3
+from conversation_members 
+where conversation_id = $1 and user_id = $2
+returning id, conversation_id, sender_id, content, sent_at, 
+  (select json_agg(json_build_object('user_id', user_id)) from members) as members
 `
 
 type CreateMessageParams struct {
-	SenderID       int32     `json:"sender_id"`
 	ConversationID uuid.UUID `json:"conversation_id"`
+	SenderID       int32     `json:"sender_id"`
 	Content        string    `json:"content"`
 }
 
 type CreateMessageRow struct {
-	ID             uuid.UUID `json:"id"`
-	SenderID       int32     `json:"sender_id"`
-	ConversationID uuid.UUID `json:"conversation_id"`
-	Content        string    `json:"content"`
-	SentAt         time.Time `json:"sent_at"`
+	ID             uuid.UUID       `json:"id"`
+	ConversationID uuid.UUID       `json:"conversation_id"`
+	SenderID       int32           `json:"sender_id"`
+	Content        string          `json:"content"`
+	SentAt         time.Time       `json:"sent_at"`
+	Members        json.RawMessage `json:"members"`
 }
 
 func (q *Queries) CreateMessage(ctx context.Context, arg CreateMessageParams) (CreateMessageRow, error) {
-	row := q.db.QueryRow(ctx, createMessage, arg.SenderID, arg.ConversationID, arg.Content)
+	row := q.db.QueryRow(ctx, createMessage, arg.ConversationID, arg.SenderID, arg.Content)
 	var i CreateMessageRow
 	err := row.Scan(
 		&i.ID,
-		&i.SenderID,
 		&i.ConversationID,
+		&i.SenderID,
 		&i.Content,
 		&i.SentAt,
+		&i.Members,
 	)
 	return i, err
 }
@@ -107,6 +117,37 @@ func (q *Queries) CreateSystemMessage(ctx context.Context, arg CreateSystemMessa
 		&i.CreatedAt,
 	)
 	return i, err
+}
+
+const getConversationMembers = `-- name: GetConversationMembers :many
+select cm.user_id from conversation_members cm
+where cm.conversation_id = $1
+  and exists (select 1 from conversation_members cm where cm.conversation_id = $1 and cm.user_id = $2)
+`
+
+type GetConversationMembersParams struct {
+	ConversationID uuid.UUID `json:"conversation_id"`
+	UserID         int32     `json:"user_id"`
+}
+
+func (q *Queries) GetConversationMembers(ctx context.Context, arg GetConversationMembersParams) ([]int32, error) {
+	rows, err := q.db.Query(ctx, getConversationMembers, arg.ConversationID, arg.UserID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []int32{}
+	for rows.Next() {
+		var user_id int32
+		if err := rows.Scan(&user_id); err != nil {
+			return nil, err
+		}
+		items = append(items, user_id)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const markMessagesAsRead = `-- name: MarkMessagesAsRead :exec

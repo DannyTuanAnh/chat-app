@@ -258,8 +258,6 @@ func (q *Queries) GetSentFriendRequests(ctx context.Context, arg GetSentFriendRe
 }
 
 const rejectFriendRequestById = `-- name: RejectFriendRequestById :execresult
-
-
 delete from friend_requests
 where request_id = $1 and receiver_id = $2 and is_accepted=false
 `
@@ -269,27 +267,6 @@ type RejectFriendRequestByIdParams struct {
 	ReceiverID int32 `json:"receiver_id"`
 }
 
-// -- name: SearchFriendByName :many
-// with friend_ids as (
-//
-//	select f.user1_id as id from friendships f where f.user2_id = $1
-//	union all
-//	select f.user2_id as id from friendships f where f.user1_id = $1
-//
-// )
-// select
-//
-//	u.uuid,
-//	u.user_id,
-//	coalesce(p.name, u.display_name) as name,
-//	p.avatar_url,
-//	u.is_active
-//
-// from users u
-// left join profiles p on u.user_id = p.user_id
-// join friend_ids f on u.user_id = f.id
-// where coalesce(p.name, u.display_name) ilike '%' || $2 || '%'
-// order by coalesce(p.name, u.display_name);
 func (q *Queries) RejectFriendRequestById(ctx context.Context, arg RejectFriendRequestByIdParams) (pgconn.CommandTag, error) {
 	return q.db.Exec(ctx, rejectFriendRequestById, arg.RequestID, arg.ReceiverID)
 }

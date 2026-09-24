@@ -4,38 +4,42 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"log"
 	"time"
 
+	chat_proto "github.com/DannyTuanAnh/end-to-end_encrypted_messaging_app/internal/gen/chat"
 	"github.com/DannyTuanAnh/end-to-end_encrypted_messaging_app/internal/middleware"
 	"github.com/DannyTuanAnh/end-to-end_encrypted_messaging_app/internal/service"
 	"github.com/DannyTuanAnh/end-to-end_encrypted_messaging_app/internal/utils"
 	"github.com/DannyTuanAnh/end-to-end_encrypted_messaging_app/internal/validation"
 	ws "github.com/DannyTuanAnh/end-to-end_encrypted_messaging_app/internal/websocket"
+
 	"github.com/coder/websocket"
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 )
 
 var lastSeen = make(map[int32]time.Time)
 
 type Content struct {
-	To      int32  `json:"to"`
-	Message string `json:"message"`
+	ToConversationID string `json:"to_conversation_id"`
+	Message          string `json:"message"`
 }
 
 type WebSocketHandler struct {
-	userService *service.WebsocketService
-	manager     *ws.ClientManager
-	lastSeen    map[int32]time.Time
+	websocketService *service.WebsocketService
+	manager          *ws.ClientManager
+	lastSeen         map[int32]time.Time
 }
 
-func NewWebSocketHandler(userService *service.WebsocketService, manager *ws.ClientManager) *WebSocketHandler {
+func NewWebSocketHandler(websocketService *service.WebsocketService, manager *ws.ClientManager) *WebSocketHandler {
 	lastSeen = make(map[int32]time.Time)
 
 	return &WebSocketHandler{
-		userService: userService,
-		manager:     manager,
-		lastSeen:    lastSeen,
+		websocketService: websocketService,
+		manager:          manager,
+		lastSeen:         lastSeen,
 	}
 }
 
@@ -63,6 +67,7 @@ func (h *WebSocketHandler) HandleWebsocket(ctx *gin.Context) {
 		Conn:     conn,
 
 		SendChan: make(chan ws.OutboundMessage, 256), // Buffer size of 256 messages
+		ErrChan:  make(chan error, 1),                // Buffer size of 1 for errors
 
 		Ctx:    clientCtx,
 		Cancel: cancel,
@@ -97,35 +102,45 @@ func (h *WebSocketHandler) handleClientMessage(client *ws.Client, messageType we
 
 	if err := json.Unmarshal(data, &content); err != nil {
 		log.Printf("WS UNMARSHAL ERROR: user=%d device=%s error=%v", client.UserID, client.DeviceID, err)
+		client.ErrChan <- fmt.Errorf("Invalid message format: %v", err)
 		return
 	}
 
-	if content.To == 0 {
-
-		argBroadCast := ws.BroadcastParams{
-			CurrentClientID:       client.UserID,
-			CurrentClientDeviceID: client.DeviceID,
-			MessageType:           messageType,
-			Data:                  []byte(content.Message),
-		}
-
-		h.manager.Broadcast(client.Ctx, argBroadCast)
-
-		return
-	}
-
-	argSendTo := ws.SendToParams{
-		TargetClientID:  content.To,
-		CurrentClientID: client.UserID,
-		CurrentDeviceID: client.DeviceID,
-		MessageType:     messageType,
-		Data:            []byte(content.Message),
-	}
-
-	err := h.manager.SendTo(client.Ctx, argSendTo)
-
+	_, err := uuid.Parse(content.ToConversationID)
 	if err != nil {
-		log.Printf("WS SEND ERROR: user=%d error=%v", client.UserID, err)
+		client.ErrChan <- fmt.Errorf("Invalid conversation ID: %v", err)
+		return
+	}
+
+	exists, err := h.websocketService.CheckMembersInConversation(client.Ctx, content.ToConversationID, client.UserID)
+	if err != nil {
+		log.Printf("Error checking members in conversation: %v", err)
+		client.ErrChan <- fmt.Errorf("Error checking members in conversation: %v", err)
+		return
+	}
+
+	if !exists {
+		client.ErrChan <- fmt.Errorf("User %d is not a member of conversation %s", client.UserID, content.ToConversationID)
+		return
+	}
+
+	req := &chat_proto.SendMessageRequest{
+		ConversationId: content.ToConversationID,
+		SenderId:       client.UserID,
+		Content:        content.Message,
+		DeviceId:       client.DeviceID,
+	}
+
+	success, err := h.websocketService.SendMessage(client.Ctx, req)
+	if err != nil {
+		log.Printf("Error sending message: %v", err)
+		client.ErrChan <- fmt.Errorf("Error sending message: %v", err)
+		return
+	}
+
+	if !success {
+		client.ErrChan <- fmt.Errorf("Failed to send message")
+		return
 	}
 }
 

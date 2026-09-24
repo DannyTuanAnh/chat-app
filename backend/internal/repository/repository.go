@@ -77,7 +77,10 @@ type ChatRepository interface {
 
 	CreateConversation(ctx context.Context, tx pgx.Tx, conversationType sqlc_chat.ConversationType) (uuid.UUID, error)
 	AddMembersToConversation(ctx context.Context, tx pgx.Tx, conversationID uuid.UUID, userIDs []int32) error
+
 	CreateSystemMessage(ctx context.Context, tx pgx.Tx, arg sqlc_chat.CreateSystemMessageParams) (sqlc_chat.SystemMessage, error)
+	CreateMessage(ctx context.Context, arg sqlc_chat.CreateMessageParams) (CreateMessageRow, error)
+	GetConversationMembers(ctx context.Context, arg sqlc_chat.GetConversationMembersParams) ([]int32, error)
 }
 
 type NotifyRepository interface {

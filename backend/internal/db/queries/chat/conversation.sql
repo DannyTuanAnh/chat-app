@@ -190,10 +190,22 @@ returning id;
 insert into conversation_members (conversation_id, user_id)
 select $1, unnest(sqlc.arg(user_ids)::int[]);
 
+-- name: GetConversationMembers :many
+select cm.user_id from conversation_members cm
+where cm.conversation_id = $1
+  and exists (select 1 from conversation_members cm where cm.conversation_id = $1 and cm.user_id = $2);
+
 -- name: CreateMessage :one
-insert into messages (sender_id, conversation_id, content)
-values ($1, $2, $3)
-returning id, sender_id, conversation_id, content, sent_at;
+with members as (
+  select user_id from conversation_members
+  where conversation_id = $1
+)
+insert into messages (conversation_id, sender_id, content)
+select $1, $2, $3
+from conversation_members 
+where conversation_id = $1 and user_id = $2
+returning id, conversation_id, sender_id, content, sent_at, 
+  (select json_agg(json_build_object('user_id', user_id)) from members) as members;
 
 -- name: CreateSystemMessage :one
 insert into system_messages (conversation_id, event_type, actor_id, target_id, content)

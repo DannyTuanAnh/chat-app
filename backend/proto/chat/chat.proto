@@ -8,6 +8,50 @@ option go_package = "internal/gen-proto/chat;chat_proto";
 
 service ChatService {
     rpc CreatePrivateConversation(CreatePrivateConversationRequest) returns (CreatePrivateConversationResponse);
+    rpc SendMessage(SendMessageRequest) returns (SendMessageResponse);
+    rpc GetConversationMembers(GetConversationMembersRequest) returns (GetConversationMembersResponse);
+}
+
+message GetConversationMembersRequest {
+    string conversation_id = 1 [
+        (buf.validate.field).required = true,
+        (buf.validate.field).string.uuid = true
+    ];
+
+    int32 user_id = 2 [
+        (buf.validate.field).required = true,
+        (buf.validate.field).int32.gt = 0
+    ];
+}
+
+message GetConversationMembersResponse {
+    repeated int32 user_ids = 1;
+}
+
+message SendMessageRequest {
+    string conversation_id = 1 [
+        (buf.validate.field).required = true,
+        (buf.validate.field).string.uuid = true
+    ];
+
+    int32 sender_id = 2 [
+        (buf.validate.field).required = true,
+        (buf.validate.field).int32.gt = 0
+    ];
+
+    string device_id = 3 [
+        (buf.validate.field).required = true,
+        (buf.validate.field).string.uuid = true
+    ];
+
+    string content = 4 [
+        (buf.validate.field).required = true,
+        (buf.validate.field).string.min_len = 0
+    ];
+}
+
+message SendMessageResponse {
+    bool success = 1;
 }
 
 message CreatePrivateConversationRequest {

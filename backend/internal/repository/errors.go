@@ -23,4 +23,7 @@ var (
 	// Friend Repository Errors
 	ErrNoRowsAcceptFriendRequestAffected = errors.New("no rows affected when accepting friend request, may be you are trying to accept a friend request that does not exist or has already been accepted or rejected")
 	ErrFriendshipAlreadyLatest           = errors.New("friendship already exists with a newer or equal established time")
+
+	// Chat Repository Errors
+	ErrorUserNotInConversation = errors.New("user is not a member of the conversation")
 )

@@ -126,8 +126,8 @@ func NewConfigWebsocket() *Config {
 	cfg.WebsocketServer = websocketCfg.WebsocketServer
 
 	// set user service
-	userCfg := NewConfigUserService()
-	cfg.Service.UserServiceAddr = userCfg.Service.UserServiceAddr
+	chatCfg := NewConfigChatService()
+	cfg.Service.ChatServiceAddr = chatCfg.Service.ChatServiceAddr
 
 	return cfg
 }

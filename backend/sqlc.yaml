@@ -80,6 +80,10 @@ sql:
             go_type: "time.Time"
           - db_type: "date"
             go_type: "time.Time"
+          - db_type: "json"
+            go_type: "encoding/json.RawMessage"
+          - db_type: "jsonb"
+            go_type: "encoding/json.RawMessage"
 
   # # Notify Service
   # - engine: "postgresql"

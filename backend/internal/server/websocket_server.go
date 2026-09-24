@@ -14,14 +14,13 @@ import (
 	"github.com/DannyTuanAnh/end-to-end_encrypted_messaging_app/internal/service"
 	"github.com/DannyTuanAnh/end-to-end_encrypted_messaging_app/internal/utils"
 	ws "github.com/DannyTuanAnh/end-to-end_encrypted_messaging_app/internal/websocket"
+
 	"github.com/coder/websocket"
 	"github.com/gin-gonic/gin"
 	"github.com/redis/go-redis/v9"
 	"golang.org/x/net/http2"
 	"golang.org/x/net/http2/h2c"
 )
-
-// var manager = ws.NewClientManager()
 
 type WebSocketServer struct {
 	route   *gin.Engine
@@ -39,16 +38,16 @@ func NewWebSocketServer(ctx context.Context, db sqlc_auth.Querier, rdb *redis.Cl
 
 	websocketConfig := config.NewConfigWebsocket()
 
-	userClient, err := client.NewUserClient(websocketConfig.Service.UserServiceAddr, websocketCertFile, websocketKeyFile)
-	if err != nil {
-		panic("Failed to create UserClient: " + err.Error())
-	}
-
 	manager := ws.NewClientManager()
 
-	userService := service.NewWebsocketService(userClient)
+	chatClient, err := client.NewChatClient(websocketConfig.Service.ChatServiceAddr, websocketCertFile, websocketKeyFile)
+	if err != nil {
+		panic("Failed to create chat client: " + err.Error())
+	}
 
-	websocketHandler := handler.NewWebSocketHandler(userService, manager)
+	websocketService := service.NewWebsocketService(rdb, chatClient)
+
+	websocketHandler := handler.NewWebSocketHandler(websocketService, manager)
 
 	r.Use(
 		middleware.CORSMiddleware(),
@@ -154,23 +153,35 @@ func (s *WebSocketServer) handleRedisMessage(ctx context.Context, msg string) {
 
 	switch event.Event {
 	case "friend_request_accepted":
-		outboundData, err := json.Marshal(event.Message)
-		if err != nil {
-			log.Printf("Failed to marshal outbound message: %v", err)
-			return
-		}
 
-		argSendToUsersParams := ws.SendToUsersParams{
-			UserIDs:     event.UserIDs,
+		sendToUsersParams := ws.SendToUsersParams{
+			UserIDs:     event.ToUserIDs,
 			MessageType: websocket.MessageText,
-			Data:        outboundData,
+			Data:        event.Message,
 		}
 
-		err = s.manager.SendToUsers(ctx, argSendToUsersParams)
+		err := s.manager.SendToUsers(ctx, sendToUsersParams)
 		if err != nil {
 			log.Printf("Failed to send message to users via WebSocket: %v", err)
 		} else {
-			log.Printf("Successfully sent message to users via WebSocket: %v", event.UserIDs)
+			log.Printf("Successfully sent message to users via WebSocket: %v", event.ToUserIDs)
+		}
+
+	case "new_message":
+
+		sendToParams := ws.SendToParams{
+			TargetClientIDs: event.ToUserIDs,
+			CurrentClientID: event.FromUserID,
+			CurrentDeviceID: event.FromDeviceID,
+			MessageType:     websocket.MessageText,
+			Data:            event.Message,
+		}
+
+		err := s.manager.SendTo(ctx, sendToParams)
+		if err != nil {
+			log.Printf("Failed to send new message to users via WebSocket: %v", err)
+		} else {
+			log.Printf("Successfully sent new message to users via WebSocket: %v", event.ToUserIDs)
 		}
 	}
 }

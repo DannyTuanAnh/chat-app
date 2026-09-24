@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log"
 
@@ -70,7 +71,7 @@ func (cs *chatService) CreatePrivateConversation(ctx context.Context, req *chat_
 		Content:        utils.ConvertToPgTypeText("You are now friends! Start chatting."),
 	}
 
-	_, err = cs.chat_repo.CreateSystemMessage(ctx, tx, createSystemMessageParams)
+	result, err := cs.chat_repo.CreateSystemMessage(ctx, tx, createSystemMessageParams)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "Failed to create system message: %v", err)
 	}
@@ -81,7 +82,10 @@ func (cs *chatService) CreatePrivateConversation(ctx context.Context, req *chat_
 
 	members := []int32{req.UserId_1, req.UserId_2}
 
-	membersByte, err := json.Marshal([]int32{req.UserId_1, req.UserId_2})
+	membersByte, err := json.Marshal(map[int32]bool{
+		req.UserId_1: true,
+		req.UserId_2: true,
+	})
 	if err != nil {
 		log.Printf("Failed to marshal conversation members: %v\n", err)
 	}
@@ -90,21 +94,28 @@ func (cs *chatService) CreatePrivateConversation(ctx context.Context, req *chat_
 		log.Printf("Failed to set conversation members in Redis: %v\n", err)
 	}
 
-	go cs.systemNotifyViaRedis(cs.ctxChatService, members, conversationID)
+	content := ws.Content{
+		FromUserID:    0,
+		Message:       "You are now friends! Start chatting.",
+		SystemMessage: true,
+	}
+
+	event := ws.RealtimeEvent{
+		Event:          "friend_request_accepted",
+		ToUserIDs:      members,
+		ConversationID: result.ConversationID.String(),
+		Message:        content,
+		SentAt:         result.CreatedAt,
+	}
+
+	go cs.systemNotifyViaRedis(cs.ctxChatService, event)
 
 	return &chat_proto.CreatePrivateConversationResponse{
 		Success: true,
 	}, nil
 }
 
-func (cs *chatService) systemNotifyViaRedis(ctx context.Context, userIDs []int32, conversationID uuid.UUID) {
-	event := ws.RealtimeEvent{
-		Event:          "friend_request_accepted",
-		UserIDs:        userIDs,
-		ConversationID: conversationID.String(),
-		Message:        "You are now friends! Start chatting.",
-	}
-
+func (cs *chatService) systemNotifyViaRedis(ctx context.Context, event ws.RealtimeEvent) {
 	data, err := json.Marshal(event)
 	if err != nil {
 		log.Printf("Failed to marshal event to JSON: %v", err)
@@ -117,5 +128,79 @@ func (cs *chatService) systemNotifyViaRedis(ctx context.Context, userIDs []int32
 		return
 	}
 
-	log.Printf("Published message to Redis channel 'friend_request_accepted' for users %v", userIDs)
+	log.Printf("Published message to Redis channel 'friend_request_accepted' for users %v", event.ToUserIDs)
+}
+
+func (cs *chatService) SendMessage(ctx context.Context, req *chat_proto.SendMessageRequest) (*chat_proto.SendMessageResponse, error) {
+	if err := cs.validator.Validate(req); err != nil {
+		return nil, validation.BuildValidationError(err)
+	}
+
+	conversationID, err := uuid.Parse(req.ConversationId)
+	if err != nil {
+		return nil, status.Errorf(codes.InvalidArgument, "Invalid conversation ID: %v", err)
+	}
+
+	arg := sqlc.CreateMessageParams{
+		ConversationID: conversationID,
+		SenderID:       req.SenderId,
+		Content:        req.Content,
+	}
+
+	result, err := cs.chat_repo.CreateMessage(ctx, arg)
+	if err != nil {
+		if errors.Is(err, repository.ErrorUserNotInConversation) {
+			return nil, status.Errorf(codes.PermissionDenied, "User %d is not a member of conversation %s", req.SenderId, req.ConversationId)
+		}
+
+		return nil, status.Errorf(codes.Internal, "Failed to create message: %v", err)
+	}
+
+	content := ws.Content{
+		FromUserID: req.SenderId,
+		Message:    req.Content,
+	}
+
+	event := ws.RealtimeEvent{
+		Event:          "new_message",
+		FromUserID:     req.SenderId,
+		FromDeviceID:   req.DeviceId,
+		ToUserIDs:      result.Members,
+		ConversationID: req.ConversationId,
+		Message:        content,
+		SentAt:         result.SentAt,
+	}
+
+	go cs.systemNotifyViaRedis(cs.ctxChatService, event)
+
+	return &chat_proto.SendMessageResponse{
+		Success: true,
+	}, nil
+}
+
+func (cs *chatService) GetConversationMembers(ctx context.Context, req *chat_proto.GetConversationMembersRequest) (*chat_proto.GetConversationMembersResponse, error) {
+	if err := cs.validator.Validate(req); err != nil {
+		return nil, validation.BuildValidationError(err)
+	}
+
+	conversationID, err := uuid.Parse(req.ConversationId)
+	if err != nil {
+		return nil, status.Errorf(codes.InvalidArgument, "Invalid conversation ID: %v", err)
+	}
+
+	members, err := cs.chat_repo.GetConversationMembers(ctx, sqlc.GetConversationMembersParams{
+		ConversationID: conversationID,
+		UserID:         req.UserId,
+	})
+	if err != nil {
+		if err == repository.ErrorUserNotInConversation {
+			return nil, status.Errorf(codes.PermissionDenied, "User %d is not a member of conversation %s", req.UserId, req.ConversationId)
+		}
+
+		return nil, status.Errorf(codes.Internal, "Failed to get conversation members: %v", err)
+	}
+
+	return &chat_proto.GetConversationMembersResponse{
+		UserIds: members,
+	}, nil
 }

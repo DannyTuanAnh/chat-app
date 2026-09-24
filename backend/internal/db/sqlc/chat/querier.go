@@ -18,6 +18,7 @@ type Querier interface {
 	CreateMessage(ctx context.Context, arg CreateMessageParams) (CreateMessageRow, error)
 	CreateSystemMessage(ctx context.Context, arg CreateSystemMessageParams) (SystemMessage, error)
 	DeleteUserStatus(ctx context.Context, userID int32) error
+	GetConversationMembers(ctx context.Context, arg GetConversationMembersParams) ([]int32, error)
 	GetDisabledUser(ctx context.Context, userID int32) (UserStatus, error)
 	LeaveConversation(ctx context.Context, arg LeaveConversationParams) (LeaveConversationRow, error)
 	// -- name: GetAllConversations :many

@@ -26,6 +26,12 @@ var chatPolicies = map[string][]string{
 	"/proto.ChatService/CreatePrivateConversation": {
 		os.Getenv("FRIEND_SERVICE_NAME"),
 	},
+	"/proto.ChatService/SendMessage": {
+		os.Getenv("WEBSOCKET_SERVICE_NAME"),
+	},
+	"/proto.ChatService/GetConversationMembers": {
+		os.Getenv("WEBSOCKET_SERVICE_NAME"),
+	},
 }
 
 type ChatServer struct {

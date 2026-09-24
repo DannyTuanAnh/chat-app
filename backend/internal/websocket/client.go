@@ -2,6 +2,7 @@ package ws
 
 import (
 	"context"
+	"encoding/json"
 	"log"
 	"sync"
 	"time"
@@ -21,7 +22,7 @@ type MessageHandler func(
 )
 
 type OutboundMessage struct {
-	Data        []byte
+	Data        Content
 	MessageType websocket.MessageType
 }
 
@@ -32,6 +33,7 @@ type Client struct {
 	Conn *websocket.Conn
 
 	SendChan chan OutboundMessage
+	ErrChan  chan error
 
 	Ctx    context.Context
 	Cancel context.CancelFunc
@@ -79,20 +81,52 @@ func (client *Client) WritePump() {
 		case <-client.Ctx.Done():
 			log.Printf("WritePump stopped: user=%d device=%s", client.UserID, client.DeviceID)
 			return
+		case err := <-client.ErrChan:
+			log.Printf("Error from ErrChan: user=%d device=%s error=%v", client.UserID, client.DeviceID, err)
+
+			wsResponse := WSResponse{
+				Error: err.Error(),
+			}
+
+			responseBytes, marshalErr := json.Marshal(wsResponse)
+			if marshalErr != nil {
+				log.Printf("JSON marshal error while sending error message: user=%d device=%s error=%v", client.UserID, client.DeviceID, marshalErr)
+				client.Close()
+				return
+			}
+
+			err = client.Conn.Write(client.Ctx, websocket.MessageText, responseBytes)
+			if err != nil {
+				log.Printf("Websocket write error while sending error message: user=%d device=%s error=%v", client.UserID, client.DeviceID, err)
+			}
+
+			client.Close()
+			return
 		case message, ok := <-client.SendChan:
 			if !ok {
 				log.Printf("SendChan closed: user=%d device=%s", client.UserID, client.DeviceID)
 				return
 			}
 
-			err := client.Conn.Write(client.Ctx, message.MessageType, message.Data)
+			wsResponse := WSResponse{
+				Data: message.Data,
+			}
+
+			messageBytes, err := json.Marshal(wsResponse)
+			if err != nil {
+				log.Printf("JSON marshal error: user=%d device=%s error=%v", client.UserID, client.DeviceID, err)
+				client.Close()
+				return
+			}
+
+			err = client.Conn.Write(client.Ctx, message.MessageType, messageBytes)
 			if err != nil {
 				log.Printf("Websocket write error: user=%d device=%s error=%v", client.UserID, client.DeviceID, err)
 				client.Close()
 				return
 			}
 
-			log.Println("Sent message to user", client.UserID, "device", client.DeviceID, "message:", string(message.Data))
+			log.Println("Sent message to user", client.UserID, "device", client.DeviceID, "message:", message.Data)
 		}
 	}
 }

@@ -61,6 +61,7 @@ var userPolicies = map[string][]string{
 	},
 	"/proto.UserService/GetProfile": {
 		os.Getenv("API_GATEWAY_NAME"),
+		os.Getenv("NOTIFY_SERVICE_NAME"),
 	},
 	"/proto.UserService/UpdateProfile": {
 		os.Getenv("API_GATEWAY_NAME"),

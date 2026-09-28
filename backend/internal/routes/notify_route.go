@@ -15,9 +15,12 @@ func NewNotifyRoutes(handler *handler.NotifyHandler) Routes {
 	}
 }
 
-func (ur *NotifyRoutes) Register(r *gin.RouterGroup) {
-	// notify := r.Group("/notify")
-	// {
-	// 	notify.GET("/sse", ur.notify_handler.HandleSSE)
-	// }
+func (ur *NotifyRoutes) Register(r *gin.RouterGroup) {}
+
+// để tạm thời để test
+func (ur *NotifyRoutes) RegisterPublic(r *gin.RouterGroup) {
+	notify := r.Group("/notification")
+	{
+		notify.POST("/registration/device/", ur.notify_handler.RegisterFCM)
+	}
 }

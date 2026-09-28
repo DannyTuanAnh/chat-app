@@ -150,36 +150,40 @@ func (q *Queries) GetConversationMembers(ctx context.Context, arg GetConversatio
 	return items, nil
 }
 
-const markMessagesAsRead = `-- name: MarkMessagesAsRead :exec
-
-    
-    
-
-
-    
-    
-    
-
-
-
-
-
-
-
-
-insert into message_reads (message_id, user_id, read_at)
-select m.id, $2, now()
-from messages m
-left join message_reads mr on m.id = mr.message_id and mr.user_id = $2
-where m.conversation_id = $1
-  and m.sender_id <> $2
-  and mr.message_id is null
+const getGroupInfoByID = `-- name: GetGroupInfoByID :one
+select g.name, g.avatar_url from groups g where g.conversation_id = $1
 `
 
-type MarkMessagesAsReadParams struct {
-	ConversationID uuid.UUID `json:"conversation_id"`
-	UserID         int32     `json:"user_id"`
+type GetGroupInfoByIDRow struct {
+	Name      string      `json:"name"`
+	AvatarUrl pgtype.Text `json:"avatar_url"`
 }
+
+func (q *Queries) GetGroupInfoByID(ctx context.Context, conversationID uuid.UUID) (GetGroupInfoByIDRow, error) {
+	row := q.db.QueryRow(ctx, getGroupInfoByID, conversationID)
+	var i GetGroupInfoByIDRow
+	err := row.Scan(&i.Name, &i.AvatarUrl)
+	return i, err
+}
+
+const getTypeOfConversation = `-- name: GetTypeOfConversation :one
+
+    
+    
+
+
+    
+    
+    
+
+
+
+
+
+
+
+select type from conversations where id = $1
+`
 
 // -- name: GetAllConversations :many
 // with user_conversations as (
@@ -349,6 +353,28 @@ type MarkMessagesAsReadParams struct {
 // where ($3::bigint is null or id < $3)
 // order by id desc
 // limit $4;
+func (q *Queries) GetTypeOfConversation(ctx context.Context, id uuid.UUID) (ConversationType, error) {
+	row := q.db.QueryRow(ctx, getTypeOfConversation, id)
+	var type_ ConversationType
+	err := row.Scan(&type_)
+	return type_, err
+}
+
+const markMessagesAsRead = `-- name: MarkMessagesAsRead :exec
+insert into message_reads (message_id, user_id, read_at)
+select m.id, $2, now()
+from messages m
+left join message_reads mr on m.id = mr.message_id and mr.user_id = $2
+where m.conversation_id = $1
+  and m.sender_id <> $2
+  and mr.message_id is null
+`
+
+type MarkMessagesAsReadParams struct {
+	ConversationID uuid.UUID `json:"conversation_id"`
+	UserID         int32     `json:"user_id"`
+}
+
 func (q *Queries) MarkMessagesAsRead(ctx context.Context, arg MarkMessagesAsReadParams) error {
 	_, err := q.db.Exec(ctx, markMessagesAsRead, arg.ConversationID, arg.UserID)
 	return err

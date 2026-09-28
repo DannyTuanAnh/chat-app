@@ -24,6 +24,26 @@ func NewWebsocketService(rdb *redis.Client, chatClient *client.ChatClient) *Webs
 	}
 }
 
+func (s *WebsocketService) SaveRedisSAdd(ctx context.Context, key string, value string) error {
+	err := s.rdb.SAdd(ctx, key, value).Err()
+	if err != nil {
+		log.Printf("Failed to add value to Redis set: %v", err)
+		return err
+	}
+
+	return nil
+}
+
+func (s *WebsocketService) SaveRedisSRem(ctx context.Context, key string, value string) error {
+	err := s.rdb.SRem(ctx, key, value).Err()
+	if err != nil {
+		log.Printf("Failed to remove value from Redis set: %v", err)
+		return err
+	}
+
+	return nil
+}
+
 func (s *WebsocketService) CheckMembersInConversation(ctx context.Context, conversationID string, userID int32) (bool, error) {
 	data, err := s.rdb.Get(ctx, fmt.Sprintf("conversation:%s:members", conversationID)).Bytes()
 	if err != nil {

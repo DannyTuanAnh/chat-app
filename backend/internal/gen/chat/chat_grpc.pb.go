@@ -22,6 +22,8 @@ const (
 	ChatService_CreatePrivateConversation_FullMethodName = "/proto.ChatService/CreatePrivateConversation"
 	ChatService_SendMessage_FullMethodName               = "/proto.ChatService/SendMessage"
 	ChatService_GetConversationMembers_FullMethodName    = "/proto.ChatService/GetConversationMembers"
+	ChatService_GetConversationType_FullMethodName       = "/proto.ChatService/GetConversationType"
+	ChatService_GetGroupInfo_FullMethodName              = "/proto.ChatService/GetGroupInfo"
 )
 
 // ChatServiceClient is the client API for ChatService service.
@@ -31,6 +33,8 @@ type ChatServiceClient interface {
 	CreatePrivateConversation(ctx context.Context, in *CreatePrivateConversationRequest, opts ...grpc.CallOption) (*CreatePrivateConversationResponse, error)
 	SendMessage(ctx context.Context, in *SendMessageRequest, opts ...grpc.CallOption) (*SendMessageResponse, error)
 	GetConversationMembers(ctx context.Context, in *GetConversationMembersRequest, opts ...grpc.CallOption) (*GetConversationMembersResponse, error)
+	GetConversationType(ctx context.Context, in *GetConversationTypeRequest, opts ...grpc.CallOption) (*GetConversationTypeResponse, error)
+	GetGroupInfo(ctx context.Context, in *GetGroupInfoRequest, opts ...grpc.CallOption) (*GetGroupInfoResponse, error)
 }
 
 type chatServiceClient struct {
@@ -71,6 +75,26 @@ func (c *chatServiceClient) GetConversationMembers(ctx context.Context, in *GetC
 	return out, nil
 }
 
+func (c *chatServiceClient) GetConversationType(ctx context.Context, in *GetConversationTypeRequest, opts ...grpc.CallOption) (*GetConversationTypeResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetConversationTypeResponse)
+	err := c.cc.Invoke(ctx, ChatService_GetConversationType_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *chatServiceClient) GetGroupInfo(ctx context.Context, in *GetGroupInfoRequest, opts ...grpc.CallOption) (*GetGroupInfoResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetGroupInfoResponse)
+	err := c.cc.Invoke(ctx, ChatService_GetGroupInfo_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // ChatServiceServer is the server API for ChatService service.
 // All implementations must embed UnimplementedChatServiceServer
 // for forward compatibility.
@@ -78,6 +102,8 @@ type ChatServiceServer interface {
 	CreatePrivateConversation(context.Context, *CreatePrivateConversationRequest) (*CreatePrivateConversationResponse, error)
 	SendMessage(context.Context, *SendMessageRequest) (*SendMessageResponse, error)
 	GetConversationMembers(context.Context, *GetConversationMembersRequest) (*GetConversationMembersResponse, error)
+	GetConversationType(context.Context, *GetConversationTypeRequest) (*GetConversationTypeResponse, error)
+	GetGroupInfo(context.Context, *GetGroupInfoRequest) (*GetGroupInfoResponse, error)
 	mustEmbedUnimplementedChatServiceServer()
 }
 
@@ -96,6 +122,12 @@ func (UnimplementedChatServiceServer) SendMessage(context.Context, *SendMessageR
 }
 func (UnimplementedChatServiceServer) GetConversationMembers(context.Context, *GetConversationMembersRequest) (*GetConversationMembersResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetConversationMembers not implemented")
+}
+func (UnimplementedChatServiceServer) GetConversationType(context.Context, *GetConversationTypeRequest) (*GetConversationTypeResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetConversationType not implemented")
+}
+func (UnimplementedChatServiceServer) GetGroupInfo(context.Context, *GetGroupInfoRequest) (*GetGroupInfoResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetGroupInfo not implemented")
 }
 func (UnimplementedChatServiceServer) mustEmbedUnimplementedChatServiceServer() {}
 func (UnimplementedChatServiceServer) testEmbeddedByValue()                     {}
@@ -172,6 +204,42 @@ func _ChatService_GetConversationMembers_Handler(srv interface{}, ctx context.Co
 	return interceptor(ctx, in, info, handler)
 }
 
+func _ChatService_GetConversationType_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetConversationTypeRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ChatServiceServer).GetConversationType(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ChatService_GetConversationType_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ChatServiceServer).GetConversationType(ctx, req.(*GetConversationTypeRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ChatService_GetGroupInfo_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetGroupInfoRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ChatServiceServer).GetGroupInfo(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ChatService_GetGroupInfo_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ChatServiceServer).GetGroupInfo(ctx, req.(*GetGroupInfoRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // ChatService_ServiceDesc is the grpc.ServiceDesc for ChatService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -190,6 +258,14 @@ var ChatService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetConversationMembers",
 			Handler:    _ChatService_GetConversationMembers_Handler,
+		},
+		{
+			MethodName: "GetConversationType",
+			Handler:    _ChatService_GetConversationType_Handler,
+		},
+		{
+			MethodName: "GetGroupInfo",
+			Handler:    _ChatService_GetGroupInfo_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

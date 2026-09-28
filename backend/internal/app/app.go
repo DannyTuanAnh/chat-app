@@ -60,7 +60,7 @@ func NewApplication(ctx context.Context, db sqlc_auth.Querier, rdb *redis.Client
 		NewUserModule(cfg.Service.UserServiceAddr, cfg.Service.FriendServiceAddr, ctx, rdb),
 		NewFriendModule(cfg.Service.FriendServiceAddr),
 		NewChatModule(cfg.Service.ChatServiceAddr),
-		NewNotifyModule(cfg.Service.UserServiceAddr),
+		NewNotifyModule(cfg.Service.NotifyServiceAddr),
 	}
 
 	// 5. Register all routes from modules by calling the getModuleRoutes helper function to extract the routes from each module

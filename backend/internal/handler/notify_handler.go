@@ -1,84 +1,101 @@
 package handler
 
 import (
+	"errors"
+	"log"
+	"net/http"
+
 	"github.com/DannyTuanAnh/end-to-end_encrypted_messaging_app/internal/client"
+	"github.com/DannyTuanAnh/end-to-end_encrypted_messaging_app/internal/dto"
+	notify_proto "github.com/DannyTuanAnh/end-to-end_encrypted_messaging_app/internal/gen/notify"
+	"github.com/DannyTuanAnh/end-to-end_encrypted_messaging_app/internal/interceptor"
+	"github.com/DannyTuanAnh/end-to-end_encrypted_messaging_app/internal/middleware"
+	"github.com/DannyTuanAnh/end-to-end_encrypted_messaging_app/internal/utils"
+	"github.com/DannyTuanAnh/end-to-end_encrypted_messaging_app/internal/validation"
+	"github.com/gin-gonic/gin"
 )
 
 type NotifyHandler struct {
-	user_client *client.UserClient
+	notify_client *client.NotifyClient
 }
 
-func NewNotifyHandler(user_client *client.UserClient) *NotifyHandler {
+func NewNotifyHandler(notify_client *client.NotifyClient) *NotifyHandler {
 	return &NotifyHandler{
-		user_client: user_client,
+		notify_client: notify_client,
 	}
 }
 
-// func (n *NotifyHandler) HandleSSE(ctx *gin.Context) {
-// 	ctx.Writer.Header().Set("Content-Type", "text/event-stream")
-// 	ctx.Writer.Header().Set("Cache-Control", "no-cache")
-// 	ctx.Writer.Header().Set("Connection", "keep-alive")
-// 	ctx.Writer.Header().Set("X-Accel-Buffering", "no")
+func (nh *NotifyHandler) RegisterFCM(ctx *gin.Context) {
+	var req dto.RegisterDeviceRequest
+	log.Println("RegisterFCM request:", req)
+	if err := ctx.ShouldBindJSON(&req); err != nil {
+		utils.ResponseValidator(ctx, validation.HandleValidationErrors(err))
+		return
+	}
 
-// 	userId, exist := ctx.Get(middleware.CTX_USER_ID_KEY)
-// 	log.Println("User ID from context:", userId, "Exist:", exist)
-// 	if !exist {
-// 		utils.ResponseErrorAbort(ctx, utils.NewError("User ID not found in context", utils.ErrCodeNotFound))
-// 	}
+	// comment tạm thời để test
+	// userID, deviceID, valid := nh.validateCtx(ctx)
+	// if !valid {
+	// 	return
+	// }
 
-// 	userID, ok := userId.(int32)
-// 	if !ok {
-// 		utils.ResponseErrorAbort(ctx, utils.NewError("User ID in context has invalid type", utils.ErrCodeInternal))
-// 		return
-// 	}
+	// result, err := nh.notify_client.Client.RegisterDevice(interceptor.WithUserIDMetadata(ctx.Request.Context(), userID), &notify_proto.RegisterDeviceRequest{
+	// 	DeviceId:  deviceID,
+	// 	PushToken: req.PushToken,
+	// })
 
-// 	if userID <= 0 {
-// 		utils.ResponseValidator(ctx, validation.HandleValidationErrors(errors.New("UserID must greater than 0")))
-// 		return
-// 	}
+	result, err := nh.notify_client.Client.RegisterDevice(interceptor.WithUserIDMetadata(ctx.Request.Context(), req.UserID), &notify_proto.RegisterDeviceRequest{
+		DeviceId:  req.DeviceID,
+		PushToken: req.PushToken,
+	})
 
-// 	ctx.Writer.WriteHeader(http.StatusOK)
+	if err != nil {
+		utils.WriteGRPCErrorToGin(ctx, err)
+		return
+	}
 
-// 	// 3. Force first body chunk immediately
-// 	_, err := ctx.Writer.Write([]byte(": connected\n\n"))
-// 	if err != nil {
-// 		log.Println("Initial SSE write error:", err)
-// 		return
-// 	}
-// 	ctx.Writer.Flush()
+	if !result.Success {
+		utils.ResponseErrorAbort(ctx, utils.NewError("Failed to register device", utils.ErrCodeInternal))
+		return
+	}
 
-// 	userIDStr := strconv.FormatInt(int64(userID), 10)
-// 	messageChan := sse.MainBroker.AddClient(userIDStr)
-// 	defer sse.MainBroker.RemoveClient(userIDStr)
+	utils.ResponseSuccess(ctx, http.StatusCreated)
+}
 
-// 	heartbeat := time.NewTicker(5 * time.Second)
-// 	defer heartbeat.Stop()
+func (h *NotifyHandler) validateCtx(ctx *gin.Context) (int32, string, bool) {
+	currentUserID, exist := ctx.Get(middleware.CTX_USER_ID_KEY)
+	if !exist {
+		log.Println("User ID not found in context")
+		utils.ResponseErrorAbort(ctx, utils.NewError("User ID not found in context", utils.ErrCodeNotFound))
+		return 0, "", false
+	}
 
-// 	for {
-// 		select {
-// 		case message := <-messageChan:
-// 			// Send the message to the client
-// 			log.Println("Sending message to client:", message)
-// 			_, err := ctx.Writer.Write([]byte("data: " + message + "\n\n"))
-// 			if err != nil {
-// 				log.Println("SSE message write error:", err)
-// 				return
-// 			}
-// 			ctx.Writer.Flush()
+	currentUserIDInt, ok := currentUserID.(int32)
+	if !ok {
+		log.Println("User ID in context has invalid type")
+		utils.ResponseErrorAbort(ctx, utils.NewError("User ID in context has invalid type", utils.ErrCodeInternal))
+		return 0, "", false
+	}
 
-// 		case <-heartbeat.C:
-// 			log.Println("Sending SSE heartbeat")
+	if currentUserIDInt <= 0 {
+		log.Println("User ID must be greater than 0")
+		utils.ResponseValidator(ctx, validation.HandleValidationErrors(errors.New("UserID must greater than 0")))
+		return 0, "", false
+	}
 
-// 			_, err := ctx.Writer.Write([]byte(": ping\n\n"))
-// 			if err != nil {
-// 				log.Println("Heartbeat write error:", err)
-// 				return
-// 			}
-// 			ctx.Writer.Flush()
+	deviceID, exist := ctx.Get(middleware.CTX_DEVICE_ID_KEY)
+	if !exist {
+		log.Println("Device ID not found in context")
+		utils.ResponseErrorAbort(ctx, utils.NewError("Device ID not found in context", utils.ErrCodeNotFound))
+		return 0, "", false
+	}
 
-// 		case <-ctx.Request.Context().Done():
-// 			log.Println("SSE client disconnected:", userIDStr)
-// 			return
-// 		}
-// 	}
-// }
+	deviceIDStr, ok := deviceID.(string)
+	if !ok {
+		log.Println("Device ID in context has invalid type")
+		utils.ResponseErrorAbort(ctx, utils.NewError("Device ID in context has invalid type", utils.ErrCodeInternal))
+		return 0, "", false
+	}
+
+	return currentUserIDInt, deviceIDStr, true
+}

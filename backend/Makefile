@@ -118,6 +118,9 @@ run-friend:
 run-chat:
 	go run cmd/chat/main.go
 
+run-notify:
+	go run cmd/notify/main.go
+
 run-websocket:
 	go run cmd/websocket/main.go
 

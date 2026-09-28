@@ -54,6 +54,7 @@ func AuthMiddleware(db sqlc.Querier, rdb *redis.Client) gin.HandlerFunc {
 			}
 
 			if !valueSession.Valid {
+				log.Println("Session is not valid")
 				utils.ResponseErrorAbort(ctx, utils.NewError("Invalid session", utils.ErrCodeUnauthorized))
 				return
 			}
@@ -71,11 +72,13 @@ func AuthMiddleware(db sqlc.Querier, rdb *redis.Client) gin.HandlerFunc {
 			}
 
 			if valueSession.SessionVersion != sessionVersion || valueSession.DeviceVersion != deviceVersion {
+				log.Println("Session or device version mismatch")
 				utils.ResponseErrorAbort(ctx, utils.NewError("Session or device version mismatch", utils.ErrCodeUnauthorized))
 				return
 			}
 
 			if valueSession.UserID == 0 {
+				log.Println("Invalid session: user_id is 0")
 				utils.ResponseErrorAbort(ctx, utils.NewError("Invalid session: user_id is 0", utils.ErrCodeUnauthorized))
 				return
 			}
@@ -145,8 +148,10 @@ func AuthMiddleware(db sqlc.Querier, rdb *redis.Client) gin.HandlerFunc {
 				UserID:         userId,
 				SessionVersion: sessionVersion,
 				DeviceVersion:  deviceVersion,
-				Valid:          result.Revoked,
+				Valid:          !result.Revoked,
 			}
+
+			log.Println("Is session valid? ", sessionRedis.Valid)
 
 			sessionBytes, err := json.Marshal(sessionRedis)
 			if err != nil {

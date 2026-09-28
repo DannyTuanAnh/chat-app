@@ -6,6 +6,7 @@ import (
 	sqlc_auth "github.com/DannyTuanAnh/end-to-end_encrypted_messaging_app/internal/db/sqlc/auth"
 	sqlc_chat "github.com/DannyTuanAnh/end-to-end_encrypted_messaging_app/internal/db/sqlc/chat"
 	sqlc_friend "github.com/DannyTuanAnh/end-to-end_encrypted_messaging_app/internal/db/sqlc/friend"
+	sqlc_notify "github.com/DannyTuanAnh/end-to-end_encrypted_messaging_app/internal/db/sqlc/notify"
 	sqlc_user "github.com/DannyTuanAnh/end-to-end_encrypted_messaging_app/internal/db/sqlc/user"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -81,7 +82,15 @@ type ChatRepository interface {
 	CreateSystemMessage(ctx context.Context, tx pgx.Tx, arg sqlc_chat.CreateSystemMessageParams) (sqlc_chat.SystemMessage, error)
 	CreateMessage(ctx context.Context, arg sqlc_chat.CreateMessageParams) (CreateMessageRow, error)
 	GetConversationMembers(ctx context.Context, arg sqlc_chat.GetConversationMembersParams) ([]int32, error)
+
+	GetTypeOfConversation(ctx context.Context, conversationID uuid.UUID) (sqlc_chat.ConversationType, error)
+	GetGroupInfoByID(ctx context.Context, conversationID uuid.UUID) (sqlc_chat.GetGroupInfoByIDRow, error)
 }
 
 type NotifyRepository interface {
+	CreateUserInfo(ctx context.Context, arg sqlc_notify.CreateFCMNotificationParams) (bool, error)
+	GetUserInfo(ctx context.Context, arg sqlc_notify.GetUserInfoParams) (sqlc_notify.UserInfo, error)
+	GetUserInfoByUserID(ctx context.Context, userID int32) ([]sqlc_notify.GetUserInfoByUserIDRow, error)
+
+	IsUserDisabled(ctx context.Context, userID int32) (UserStatus, error)
 }

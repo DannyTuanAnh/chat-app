@@ -8,8 +8,11 @@ import (
 	"log"
 
 	"buf.build/go/protovalidate"
+	"github.com/DannyTuanAnh/end-to-end_encrypted_messaging_app/internal/client"
 	sqlc "github.com/DannyTuanAnh/end-to-end_encrypted_messaging_app/internal/db/sqlc/chat"
 	chat_proto "github.com/DannyTuanAnh/end-to-end_encrypted_messaging_app/internal/gen/chat"
+	notify_proto "github.com/DannyTuanAnh/end-to-end_encrypted_messaging_app/internal/gen/notify"
+	"github.com/DannyTuanAnh/end-to-end_encrypted_messaging_app/internal/interceptor"
 	"github.com/DannyTuanAnh/end-to-end_encrypted_messaging_app/internal/repository"
 	"github.com/DannyTuanAnh/end-to-end_encrypted_messaging_app/internal/utils"
 	"github.com/DannyTuanAnh/end-to-end_encrypted_messaging_app/internal/validation"
@@ -26,9 +29,11 @@ type chatService struct {
 	validator      protovalidate.Validator
 	rdb            *redis.Client
 	ctxChatService context.Context
+
+	notifyClient *client.NotifyClient
 }
 
-func NewChatService(chat_repo repository.ChatRepository, rdb *redis.Client, ctx context.Context) *chatService {
+func NewChatService(chat_repo repository.ChatRepository, rdb *redis.Client, ctx context.Context, notifyClient *client.NotifyClient) *chatService {
 	v, err := protovalidate.New()
 	if err != nil {
 		panic(fmt.Sprintf("Failed to create validator: %v", err))
@@ -39,6 +44,7 @@ func NewChatService(chat_repo repository.ChatRepository, rdb *redis.Client, ctx 
 		validator:      v,
 		rdb:            rdb,
 		ctxChatService: ctx,
+		notifyClient:   notifyClient,
 	}
 }
 
@@ -128,12 +134,58 @@ func (cs *chatService) systemNotifyViaRedis(ctx context.Context, event ws.Realti
 		return
 	}
 
-	log.Printf("Published message to Redis channel 'friend_request_accepted' for users %v", event.ToUserIDs)
+	log.Println("Published message to Redis channel 'friend_request_accepted' for users:", event.ToUserIDs)
+}
+
+func (cs *chatService) GetConversationType(ctx context.Context, req *chat_proto.GetConversationTypeRequest) (*chat_proto.GetConversationTypeResponse, error) {
+	if err := cs.validator.Validate(req); err != nil {
+		return nil, validation.BuildValidationError(err)
+	}
+
+	conversationID, err := uuid.Parse(req.ConversationId)
+	if err != nil {
+		return nil, status.Errorf(codes.InvalidArgument, "Invalid conversation ID: %v", err)
+	}
+
+	conversationType, err := cs.chat_repo.GetTypeOfConversation(ctx, conversationID)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "Failed to get conversation type: %v", err)
+	}
+
+	return &chat_proto.GetConversationTypeResponse{
+		ConversationType: string(conversationType),
+	}, nil
+}
+
+func (cs *chatService) GetGroupInfo(ctx context.Context, req *chat_proto.GetGroupInfoRequest) (*chat_proto.GetGroupInfoResponse, error) {
+	if err := cs.validator.Validate(req); err != nil {
+		return nil, validation.BuildValidationError(err)
+	}
+
+	conversationID, err := uuid.Parse(req.ConversationId)
+	if err != nil {
+		return nil, status.Errorf(codes.InvalidArgument, "Invalid conversation ID: %v", err)
+	}
+
+	groupInfo, err := cs.chat_repo.GetGroupInfoByID(ctx, conversationID)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "Failed to get group info: %v", err)
+	}
+
+	return &chat_proto.GetGroupInfoResponse{
+		GroupName:      groupInfo.Name,
+		GroupAvatarUrl: groupInfo.AvatarUrl.String,
+	}, nil
 }
 
 func (cs *chatService) SendMessage(ctx context.Context, req *chat_proto.SendMessageRequest) (*chat_proto.SendMessageResponse, error) {
 	if err := cs.validator.Validate(req); err != nil {
 		return nil, validation.BuildValidationError(err)
+	}
+
+	userID, ok := ctx.Value(interceptor.UserIDContextKey).(int32)
+	if !ok {
+		return nil, status.Error(codes.Unauthenticated, "user ID not found in context")
 	}
 
 	conversationID, err := uuid.Parse(req.ConversationId)
@@ -172,6 +224,21 @@ func (cs *chatService) SendMessage(ctx context.Context, req *chat_proto.SendMess
 	}
 
 	go cs.systemNotifyViaRedis(cs.ctxChatService, event)
+
+	sendToFIDRequest := &notify_proto.SendToFIDRequest{
+		ToUserIds:      result.Members,
+		ConversationId: conversationID.String(),
+		Message:        req.Content,
+	}
+
+	resp, err := cs.notifyClient.Client.SendToFID(interceptor.WithUserIDMetadata(ctx, userID), sendToFIDRequest)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "Failed to send notification via Notify service: %v", err)
+	}
+
+	if !resp.Success {
+		return nil, status.Errorf(codes.Internal, "Notify service failed to send notification")
+	}
 
 	return &chat_proto.SendMessageResponse{
 		Success: true,

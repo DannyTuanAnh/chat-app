@@ -76,6 +76,11 @@ func (h *WebSocketHandler) HandleWebsocket(ctx *gin.Context) {
 	h.manager.AddClient(client)
 
 	defer func() {
+		err := h.websocketService.SaveRedisSRem(ctx, fmt.Sprintf("ws:presence:user:%d", client.UserID), client.DeviceID)
+		if err != nil {
+			log.Println("Error removing device from Redis set:", err)
+		}
+
 		client.Close()
 
 		becomeOffline := h.manager.RemoveClient(client)
@@ -87,6 +92,10 @@ func (h *WebSocketHandler) HandleWebsocket(ctx *gin.Context) {
 
 		}
 	}()
+
+	key := fmt.Sprintf("ws:presence:user:%d", currentUserID)
+
+	err = h.websocketService.SaveRedisSAdd(clientCtx, key, deviceID)
 
 	log.Println("User", currentUserID, "connected with device", deviceID)
 

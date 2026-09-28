@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"log"
 	"time"
 
 	"github.com/DannyTuanAnh/end-to-end_encrypted_messaging_app/internal/db"
@@ -60,6 +61,32 @@ func (cr *chatRepository) IsUserDisabled(ctx context.Context, userID int32) (Use
 	}
 
 	return UserStatus(row.Status), nil
+}
+
+func (cr *chatRepository) GetTypeOfConversation(ctx context.Context, conversationID uuid.UUID) (sqlc.ConversationType, error) {
+	row, err := cr.chat_repository.DB.GetTypeOfConversation(ctx, conversationID)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return "", errors.New("conversation not found")
+		}
+
+		return "", err
+	}
+
+	return row, nil
+}
+
+func (cr *chatRepository) GetGroupInfoByID(ctx context.Context, conversationID uuid.UUID) (sqlc.GetGroupInfoByIDRow, error) {
+	row, err := cr.chat_repository.DB.GetGroupInfoByID(ctx, conversationID)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return sqlc.GetGroupInfoByIDRow{}, errors.New("group not found")
+		}
+
+		return sqlc.GetGroupInfoByIDRow{}, err
+	}
+
+	return row, nil
 }
 
 func (cr *chatRepository) CreateConversation(ctx context.Context, tx pgx.Tx, conversationType sqlc.ConversationType) (uuid.UUID, error) {
@@ -154,10 +181,12 @@ func (cr *chatRepository) CreateMessage(ctx context.Context, arg sqlc.CreateMess
 		return CreateMessageRow{}, err
 	}
 
-	memberIDs := make([]int32, len(members)-1)
-	for i, member := range members {
+	log.Println("Members in conversation:", members)
+
+	memberIDs := make([]int32, 0, len(members)-1)
+	for _, member := range members {
 		if member.UserID != arg.SenderID {
-			memberIDs[i] = member.UserID
+			memberIDs = append(memberIDs, member.UserID)
 		}
 	}
 

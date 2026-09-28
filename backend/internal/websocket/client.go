@@ -26,11 +26,18 @@ type OutboundMessage struct {
 	MessageType websocket.MessageType
 }
 
+type Writer interface {
+	Write(ctx context.Context, typ websocket.MessageType, data []byte) error
+}
+
 type Client struct {
 	DeviceID string
 	UserID   int32
 
-	Conn *websocket.Conn
+	// Tạm thời tắt để test bench mark
+	// Conn *websocket.Conn
+
+	Conn Writer
 
 	SendChan chan OutboundMessage
 	ErrChan  chan error
@@ -49,7 +56,8 @@ func (client *Client) Close() {
 			client.Cancel()
 		}
 
-		_ = client.Conn.Close(websocket.StatusNormalClosure, "Closing connection")
+		// tạm thời tắt để test bench mark
+		// _ = client.Conn.Close(websocket.StatusNormalClosure, "Closing connection")
 	})
 }
 
@@ -61,15 +69,18 @@ func (client *Client) ReadPump(handler MessageHandler) {
 			client.Close()
 			return
 		default:
-			messageType, data, err := client.Conn.Read(client.Ctx)
-			if err != nil {
-				log.Println("Error reading from websocket:", err)
-				client.Close()
-				return
-			}
+			// tạm thời tắt để test bench mark
 
-			log.Printf("Received message from user %d, device %s: %s", client.UserID, client.DeviceID, string(data))
-			handler(client, messageType, data)
+			// messageType, data, err := client.Conn.Read(client.Ctx)
+			// if err != nil {
+			// 	log.Println("Error reading from websocket:", err)
+			// 	client.Close()
+			// 	return
+			// }
+
+			// log.Printf("Received message from user %d, device %s: %s", client.UserID, client.DeviceID, string(data))
+			// handler(client, messageType, data)
+			continue
 		}
 	}
 
@@ -126,7 +137,8 @@ func (client *Client) WritePump() {
 				return
 			}
 
-			log.Println("Sent message to user", client.UserID, "device", client.DeviceID, "message:", message.Data)
+			//tạm thời tắt để test bench mark
+			// log.Println("Sent message to user", client.UserID, "device", client.DeviceID, "message:", message.Data)
 		}
 	}
 }
@@ -140,16 +152,18 @@ func (client *Client) Heartbeat() {
 		case <-client.Ctx.Done():
 			return
 		case <-ticker.C:
-			pingCtx, pingCancel := context.WithTimeout(client.Ctx, PONG_TIMEOUT)
+			// pingCtx, pingCancel := context.WithTimeout(client.Ctx, PONG_TIMEOUT)
 
-			err := client.Conn.Ping(pingCtx)
-			pingCancel()
+			// // tạm thời tắt để test bench mark
 
-			if err != nil {
-				log.Printf("heartbeat failed: user=%d device=%s error=%v", client.UserID, client.DeviceID, err)
-				client.Close()
-				return
-			}
+			// err := client.Conn.Ping(pingCtx)
+			// pingCancel()
+
+			// if err != nil {
+			// 	log.Printf("heartbeat failed: user=%d device=%s error=%v", client.UserID, client.DeviceID, err)
+			// 	client.Close()
+			// 	return
+			// }
 
 			log.Println("heartbeat: pong received")
 		}

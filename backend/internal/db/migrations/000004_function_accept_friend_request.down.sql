@@ -1,1 +1,0 @@
-drop function if exists accept_friend_request(bigint, bigint);

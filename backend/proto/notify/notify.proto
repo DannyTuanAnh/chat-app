@@ -1,0 +1,52 @@
+syntax = "proto3";
+
+package proto;
+
+import "buf/validate/validate.proto";
+
+option go_package = "internal/gen-proto/notify;notify_proto";
+
+service NotifyService {
+    rpc RegisterDevice(RegisterDeviceRequest) returns (RegisterDeviceResponse);
+    rpc SendToFID(SendToFIDRequest) returns (SendToFIDResponse);
+}
+
+message SendToFIDRequest {
+    repeated int32 to_user_ids = 1 [
+        (buf.validate.field).repeated.min_items = 1,
+        (buf.validate.field).repeated.unique = true,
+        (buf.validate.field).repeated.items.int32.gt = 0
+    ];
+
+    string conversation_id = 2 [
+        (buf.validate.field).required = true,
+        (buf.validate.field).string.uuid = true
+    ];
+
+    string message = 3 [
+        (buf.validate.field).required = true,
+        (buf.validate.field).string.min_len = 1
+    ];
+}
+
+message SendToFIDResponse {
+    bool success = 1;
+}
+
+message RegisterDeviceRequest {
+    string device_id = 1 [
+        (buf.validate.field).required = true,
+        (buf.validate.field).string.uuid = true
+    ];
+
+    string push_token = 2 [
+        (buf.validate.field).required = true,
+        (buf.validate.field).string.min_len = 1
+    ];
+}
+
+message RegisterDeviceResponse {
+    bool success = 1;
+}
+
+

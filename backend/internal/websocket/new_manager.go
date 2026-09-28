@@ -10,39 +10,39 @@ import (
 	"github.com/coder/websocket"
 )
 
-type RealtimeEvent struct {
-	Event          string    `json:"event_type"`
-	FromUserID     int32     `json:"from_user_id"`
-	FromDeviceID   string    `json:"from_device_id"`
-	ToUserIDs      []int32   `json:"to_user_ids"`
-	ConversationID string    `json:"conversation_id"`
-	Message        Content   `json:"message"`
-	SentAt         time.Time `json:"sent_at"`
+type NewRealtimeEvent struct {
+	Event          string     `json:"event_type"`
+	FromUserID     int32      `json:"from_user_id"`
+	FromDeviceID   string     `json:"from_device_id"`
+	ToUserIDs      []int32    `json:"to_user_ids"`
+	ConversationID string     `json:"conversation_id"`
+	Message        NewContent `json:"message"`
+	SentAt         time.Time  `json:"sent_at"`
 }
 
-type Content struct {
+type NewContent struct {
 	FromUserID    int32  `json:"from_user_id"`
 	Message       string `json:"message"`
 	SystemMessage bool   `json:"system_message"`
 }
 
-type WSResponse struct {
+type NewWSResponse struct {
 	Data  any    `json:"data,omitempty"`
 	Error string `json:"error,omitempty"`
 }
 
-type ClientManager struct {
+type NewManager struct {
 	Clients map[int32]map[string]*Client
 	mu      sync.RWMutex
 }
 
-func NewClientManager() *ClientManager {
-	return &ClientManager{
+func NewNewManager() *NewManager {
+	return &NewManager{
 		Clients: make(map[int32]map[string]*Client),
 	}
 }
 
-func (cm *ClientManager) AddClient(client *Client) {
+func (cm *NewManager) AddClient(client *Client) {
 	cm.mu.Lock()
 	defer cm.mu.Unlock()
 
@@ -57,7 +57,7 @@ func (cm *ClientManager) AddClient(client *Client) {
 // Nhưng server chưa kịp remove client khỏi map, và client đó lại connect lại với cùng sessionID
 // Khi đó, client mới sẽ overwrite client cũ trong map, và client cũ sẽ bị remove khỏi map
 // => Việc kiểm tra (currentClient != client) sẽ giúp tránh việc remove client mới khỏi map
-func (cm *ClientManager) RemoveClient(client *Client) bool {
+func (cm *NewManager) RemoveClient(client *Client) bool {
 	cm.mu.Lock()
 	defer cm.mu.Unlock()
 
@@ -86,7 +86,7 @@ func (cm *ClientManager) RemoveClient(client *Client) bool {
 	return false
 }
 
-func (cm *ClientManager) CloseAll() {
+func (cm *NewManager) CloseAll() {
 	cm.mu.Lock()
 
 	clients := make([]*Client, 0, len(cm.Clients))
@@ -108,7 +108,7 @@ func (cm *ClientManager) CloseAll() {
 	cm.mu.Unlock()
 }
 
-func (cm *ClientManager) GetClientsByUserID(clientID int32) ([]*Client, bool) {
+func (cm *NewManager) GetClientsByUserID(clientID int32) ([]*Client, bool) {
 	cm.mu.RLock()
 	defer cm.mu.RUnlock()
 
@@ -125,7 +125,7 @@ func (cm *ClientManager) GetClientsByUserID(clientID int32) ([]*Client, bool) {
 	return clients, true
 }
 
-func (cm *ClientManager) GetClient(clientID int32, deviceID string) (*Client, bool) {
+func (cm *NewManager) GetClient(clientID int32, deviceID string) (*Client, bool) {
 	cm.mu.RLock()
 	defer cm.mu.RUnlock()
 
@@ -138,15 +138,15 @@ func (cm *ClientManager) GetClient(clientID int32, deviceID string) (*Client, bo
 	return client, exists
 }
 
-type SendToParams struct {
+type NewSendToParams struct {
 	TargetClientIDs []int32
 	CurrentClientID int32
 	CurrentDeviceID string
 	MessageType     websocket.MessageType
-	Data            Content
+	Data            NewContent
 }
 
-func (cm *ClientManager) SendTo(ctx context.Context, arg SendToParams) error {
+func (cm *NewManager) SendTo(ctx context.Context, arg SendToParams) error {
 	cm.mu.RLock()
 
 	targetClientDevices := make([]*Client, 0)
@@ -203,13 +203,13 @@ func (cm *ClientManager) SendTo(ctx context.Context, arg SendToParams) error {
 	return nil
 }
 
-type SendToUsersParams struct {
+type NewSendToUsersParams struct {
 	UserIDs     []int32
 	MessageType websocket.MessageType
 	Data        Content
 }
 
-func (cm *ClientManager) SendToUsers(ctx context.Context, arg SendToUsersParams) error {
+func (cm *NewManager) SendToUsers(ctx context.Context, arg NewSendToUsersParams) error {
 	cm.mu.RLock()
 
 	recipients := make([]*Client, 0)
@@ -240,7 +240,7 @@ func (cm *ClientManager) SendToUsers(ctx context.Context, arg SendToUsersParams)
 			log.Println("Client context done while sending to users, skipping client", client.UserID, "device", client.DeviceID)
 			continue
 		case client.SendChan <- message:
-			log.Println("Sent message to client", client.UserID, "device", client.DeviceID)
+			// log.Println("Sent message to client", client.UserID, "device", client.DeviceID)
 			// Successfully sent to client's send channel
 		default:
 			log.Println("Timeout sending to client", client.UserID, "device", client.DeviceID, "skipping and closing send channel")
@@ -251,14 +251,14 @@ func (cm *ClientManager) SendToUsers(ctx context.Context, arg SendToUsersParams)
 	return nil
 }
 
-type BroadcastParams struct {
+type NewBroadcastParams struct {
 	CurrentClientID       int32
 	CurrentClientDeviceID string
 	MessageType           websocket.MessageType
-	Data                  Content
+	Data                  NewContent
 }
 
-func (cm *ClientManager) Broadcast(ctx context.Context, arg BroadcastParams) {
+func (cm *NewManager) Broadcast(ctx context.Context, arg BroadcastParams) {
 	cm.mu.RLock()
 
 	clients := make([]*Client, 0, len(cm.Clients))

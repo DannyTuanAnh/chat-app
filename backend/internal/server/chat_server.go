@@ -10,6 +10,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/DannyTuanAnh/end-to-end_encrypted_messaging_app/internal/client"
 	"github.com/DannyTuanAnh/end-to-end_encrypted_messaging_app/internal/config"
 	"github.com/DannyTuanAnh/end-to-end_encrypted_messaging_app/internal/db"
 	chat_proto "github.com/DannyTuanAnh/end-to-end_encrypted_messaging_app/internal/gen/chat"
@@ -32,6 +33,12 @@ var chatPolicies = map[string][]string{
 	"/proto.ChatService/GetConversationMembers": {
 		os.Getenv("WEBSOCKET_SERVICE_NAME"),
 	},
+	"/proto.ChatService/GetConversationType": {
+		os.Getenv("NOTIFY_SERVICE_NAME"),
+	},
+	"/proto.ChatService/GetGroupInfo": {
+		os.Getenv("NOTIFY_SERVICE_NAME"),
+	},
 }
 
 type ChatServer struct {
@@ -43,6 +50,9 @@ type ChatServer struct {
 func NewChatServer(ctx context.Context, db db.ChatDB, rdb *redis.Client) (*ChatServer, error) {
 	chatCertFile := utils.GetEnv("PATH_CERT_CHAT_SERVICE", "")
 	chatKeyFile := utils.GetEnv("PATH_KEY_CHAT_SERVICE", "")
+
+	chatKeyFileClient := utils.GetEnv("PATH_KEY_CHAT_SERVICE_CLIENT", "")
+	chatCertFileClient := utils.GetEnv("PATH_CERT_CHAT_SERVICE_CLIENT", "")
 
 	var cert tls.Certificate
 	var err error
@@ -87,13 +97,22 @@ func NewChatServer(ctx context.Context, db db.ChatDB, rdb *redis.Client) (*ChatS
 
 	chatCfg := config.NewConfigChatService()
 
+	notifyCfg := config.NewConfigNotifyService()
+
 	cfg := &config.Config{}
 
 	cfg.Service.ChatServiceAddr = chatCfg.Service.ChatServiceAddr
 	cfg.Service.ChatServiceListenAddr = chatCfg.Service.ChatServiceListenAddr
 
+	cfg.Service.NotifyServiceAddr = notifyCfg.Service.NotifyServiceAddr
+
+	notifyClient, err := client.NewNotifyClient(cfg.Service.NotifyServiceAddr, chatCertFileClient, chatKeyFileClient)
+	if err != nil {
+		return nil, fmt.Errorf("Failed to create notify client: %v", err)
+	}
+
 	chat_repo := repository.NewChatRepository(db)
-	chat_service := service.NewChatService(chat_repo, rdb, ctx)
+	chat_service := service.NewChatService(chat_repo, rdb, ctx, notifyClient)
 
 	s := grpc.NewServer(
 		grpc.Creds(credentials.NewTLS(tlsConfig)),

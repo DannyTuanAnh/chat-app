@@ -26,4 +26,7 @@ var (
 
 	// Chat Repository Errors
 	ErrorUserNotInConversation = errors.New("user is not a member of the conversation")
+
+	// Notify Repository Errors
+	ErrUserInfoNotFound = errors.New("user info not found")
 )

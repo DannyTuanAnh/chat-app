@@ -20,7 +20,7 @@ type Querier interface {
 	DeleteUserStatus(ctx context.Context, userID int32) error
 	GetConversationMembers(ctx context.Context, arg GetConversationMembersParams) ([]int32, error)
 	GetDisabledUser(ctx context.Context, userID int32) (UserStatus, error)
-	LeaveConversation(ctx context.Context, arg LeaveConversationParams) (LeaveConversationRow, error)
+	GetGroupInfoByID(ctx context.Context, conversationID uuid.UUID) (GetGroupInfoByIDRow, error)
 	// -- name: GetAllConversations :many
 	// with user_conversations as (
 	//     select conversation_id
@@ -179,6 +179,8 @@ type Querier interface {
 	// where ($3::bigint is null or id < $3)
 	// order by id desc
 	// limit $4;
+	GetTypeOfConversation(ctx context.Context, id uuid.UUID) (ConversationType, error)
+	LeaveConversation(ctx context.Context, arg LeaveConversationParams) (LeaveConversationRow, error)
 	MarkMessagesAsRead(ctx context.Context, arg MarkMessagesAsReadParams) error
 	RemoveGroupMembers(ctx context.Context, arg RemoveGroupMembersParams) error
 	SaveUserStatus(ctx context.Context, arg SaveUserStatusParams) (pgconn.CommandTag, error)

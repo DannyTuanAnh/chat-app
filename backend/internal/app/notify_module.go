@@ -1,6 +1,8 @@
 package app
 
 import (
+	"log"
+
 	"github.com/DannyTuanAnh/end-to-end_encrypted_messaging_app/internal/client"
 	"github.com/DannyTuanAnh/end-to-end_encrypted_messaging_app/internal/handler"
 	"github.com/DannyTuanAnh/end-to-end_encrypted_messaging_app/internal/routes"
@@ -17,8 +19,9 @@ func NewNotifyModule(addr string) *NotifyModule {
 	apiGatewayCertFile := utils.GetEnv("PATH_CERT_API_GATEWAY_CLIENT", "")
 	apiGatewayKeyFile := utils.GetEnv("PATH_KEY_API_GATEWAY_CLIENT", "")
 
+	log.Println("NotifyModule: addr:", addr)
 	// 1. Initialize repository
-	notify_client, err := client.NewUserClient(addr, apiGatewayCertFile, apiGatewayKeyFile)
+	notify_client, err := client.NewNotifyClient(addr, apiGatewayCertFile, apiGatewayKeyFile)
 	if err != nil {
 		panic("Failed to initialize notify client: " + err.Error())
 	}

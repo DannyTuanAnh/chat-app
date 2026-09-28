@@ -72,6 +72,9 @@ type ServiceConfig struct {
 
 	ChatServiceAddr       string
 	ChatServiceListenAddr string
+
+	NotifyServiceAddr       string
+	NotifyServiceListenAddr string
 }
 
 type RedisGCPConfig struct {
@@ -114,6 +117,10 @@ func NewConfig() *Config {
 	// set chat service
 	chatCfg := NewConfigChatService()
 	cfg.Service.ChatServiceAddr = chatCfg.Service.ChatServiceAddr
+
+	// set notify service
+	notifyCfg := NewConfigNotifyService()
+	cfg.Service.NotifyServiceAddr = notifyCfg.Service.NotifyServiceAddr
 
 	return cfg
 }
@@ -221,6 +228,15 @@ func NewConfigAuthService() *Config {
 	}
 }
 
+func NewConfigNotifyService() *Config {
+	return &Config{
+		Service: ServiceConfig{
+			NotifyServiceAddr:       utils.GetEnv("NOTIFY_SERVICE_ADDR", ":50055"),
+			NotifyServiceListenAddr: utils.GetEnv("NOTIFY_SERVICE_LISTEN_ADDR", ":50055"),
+		},
+	}
+}
+
 func NewConfigUserService() *Config {
 	return &Config{
 		Service: ServiceConfig{
@@ -295,6 +311,19 @@ func NewConfigChatDB() *Config {
 			User:     utils.GetEnv("DB_USER", "postgres"),
 			Password: utils.GetEnv("CHAT_DB_PASSWORD", "postgres"),
 			DBName:   utils.GetEnv("CHAT_DB_NAME", "myapp"),
+			SSLMode:  utils.GetEnv("DB_SSLMODE", "disable"),
+		},
+	}
+}
+
+func NewConfigNotifyDB() *Config {
+	return &Config{
+		DB: DatabaseConfig{
+			Host:     utils.GetEnv("DB_HOST", "localhost"),
+			Port:     utils.GetEnv("NOTIFY_DB_PORT", "5432"),
+			User:     utils.GetEnv("DB_USER", "postgres"),
+			Password: utils.GetEnv("NOTIFY_DB_PASSWORD", "postgres"),
+			DBName:   utils.GetEnv("NOTIFY_DB_NAME", "myapp"),
 			SSLMode:  utils.GetEnv("DB_SSLMODE", "disable"),
 		},
 	}

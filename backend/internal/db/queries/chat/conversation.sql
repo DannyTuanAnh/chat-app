@@ -171,6 +171,11 @@
 -- order by id desc 
 -- limit $4;
 
+-- name: GetTypeOfConversation :one
+select type from conversations where id = $1;
+
+-- name: GetGroupInfoByID :one
+select g.name, g.avatar_url from groups g where g.conversation_id = $1;
 
 -- name: MarkMessagesAsRead :exec
 insert into message_reads (message_id, user_id, read_at)

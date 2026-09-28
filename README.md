@@ -1,6 +1,6 @@
-# Real-time Chat Application
+# Real-time Chat Backend System
 
-> A learning project for exploring how to design and implement a real-time chat application using **Go** and **microservices architecture**.
+> A learning project for exploring how to design and implement a real-time chat backend system using **Go** and **microservices architecture**.
 
 ---
 
@@ -8,22 +8,22 @@
 
 The project focuses on several core backend engineering problems:
 
--  Real-time communication with WebSocket
--  Multi-device connection management
--  Service-to-service communication via gRPC
--  Authentication and authorization
--  Secure internal communication using mTLS
--  RBAC for microservice communication
--  Redis Pub/Sub for scalable WebSocket servers
--  Push notifications for offline devices using Firebase Cloud Messaging
--  Non-blocking WebSocket writes for slow connections
+- Real-time communication with WebSocket
+- Multi-device connection management
+- Service-to-service communication via gRPC
+- Authentication and authorization
+- Secure internal communication using mTLS
+- RBAC for microservice communication
+- Redis Pub/Sub for scalable WebSocket servers
+- Push notifications for offline devices using Firebase Cloud Messaging
+- Non-blocking WebSocket writes for slow connections
 
 > [!NOTE]
 > This is primarily a **learning project**. The goal is to understand and apply core backend and distributed-system concepts rather than build a fully production-ready system. Advanced concerns such as large-scale distributed coordination, sophisticated message delivery guarantees, observability, and fault-tolerant infrastructure are intentionally outside the scope of this project.
 
 ---
 
-##  Architecture
+## Architecture
 
 The application is designed around a **microservice architecture**, where different business domains are separated into independent services.
 
@@ -81,42 +81,46 @@ The WebSocket layer is designed so that multiple server instances can run simult
 
 ---
 
-##  Technologies
+## Technologies
 
 ### Backend
-| Technology | Role |
-|---|---|
-| **Go** | Primary language |
-| **Gin** | HTTP / REST API framework |
-| **gRPC** | Internal service-to-service communication |
-| **RESTful API** | Client-facing HTTP API |
-| **WebSocket** | Real-time bidirectional communication |
+
+| Technology      | Role                                      |
+| --------------- | ----------------------------------------- |
+| **Go**          | Primary language                          |
+| **Gin**         | HTTP / REST API framework                 |
+| **gRPC**        | Internal service-to-service communication |
+| **RESTful API** | Client-facing HTTP API                    |
+| **WebSocket**   | Real-time bidirectional communication     |
 
 ### Data & Messaging
-| Technology | Role |
-|---|---|
-| **PostgreSQL** | Persistent relational data |
-| **Redis** | Caching and connection-related data |
+
+| Technology        | Role                                          |
+| ----------------- | --------------------------------------------- |
+| **PostgreSQL**    | Persistent relational data                    |
+| **Redis**         | Caching and connection-related data           |
 | **Redis Pub/Sub** | Real-time event propagation between instances |
 
 ### Cloud & Infrastructure
-| Technology | Role |
-|---|---|
-| **Google Cloud Platform** | Cloud provider |
-| **Google Cloud Storage** | Object storage for user profile images |
-| **Cloud Functions** | Event-driven image processing |
-| **Google Cloud Vision API** | Automated image content analysis |
+
+| Technology                   | Role                                   |
+| ---------------------------- | -------------------------------------- |
+| **Google Cloud Platform**    | Cloud provider                         |
+| **Google Cloud Storage**     | Object storage for user profile images |
+| **Cloud Functions**          | Event-driven image processing          |
+| **Google Cloud Vision API**  | Automated image content analysis       |
 | **Firebase Cloud Messaging** | Push notifications for Android devices |
 
 ### Security
-| Technology | Role |
-|---|---|
-| **mTLS** | Secure service-to-service communication |
-| **RBAC** | Authorization between internal services |
+
+| Technology | Role                                    |
+| ---------- | --------------------------------------- |
+| **mTLS**   | Secure service-to-service communication |
+| **RBAC**   | Authorization between internal services |
 
 ---
 
-##  Key Engineering Problems
+## Key Engineering Problems
 
 ### 1. Non-blocking WebSocket Write Architecture
 
@@ -141,7 +145,7 @@ Client 4 ── waiting...
 
 **Total time: ~100ms** — even though Clients 3 and 4 are on fast connections.
 
-####  The Solution — Per-client Write Pumps
+#### The Solution — Per-client Write Pumps
 
 Instead of writing directly inside the broadcast loop, the manager only dispatches messages to each client's **buffered channel**:
 
@@ -176,26 +180,26 @@ Each client has its own **WritePump** goroutine that handles socket I/O independ
 
 This separates **message dispatch** from **socket I/O** — a slow socket is isolated to its own WritePump.
 
-####  Benchmark Results
+#### Benchmark Results
 
 **Test A — Single Slow Client** (`Client 49 → fast`, `Client 50 → slow 100ms`, `Client 51 → fast`)
 
-| Metric | Old Architecture | New Architecture |
-|---|---|---|
-| Client 49 | 0ms | 0ms |
-| Client 50 | ~100ms | ~100ms |
-| Client 51 | **~100ms** (blocked) | **~0ms** |
+| Metric    | Old Architecture     | New Architecture |
+| --------- | -------------------- | ---------------- |
+| Client 49 | 0ms                  | 0ms              |
+| Client 50 | ~100ms               | ~100ms           |
+| Client 51 | **~100ms** (blocked) | **~0ms**         |
 
 **Test B — 10 fast clients + 10 slow clients (100ms each)**
 
-| Metric | Old Architecture | New Architecture |
-|---|---|---|
-| Dispatch time | ~1.005s | ~0ms |
-| Total test time | ~1.005s | ~100ms |
-| fast[0] | 0ms | 0ms |
-| fast[5] | ~503ms | 0ms |
-| fast[9] | ~905ms | 0ms |
-| Slow client blocks others | ✅ Yes | ❌ No |
+| Metric                    | Old Architecture | New Architecture |
+| ------------------------- | ---------------- | ---------------- |
+| Dispatch time             | ~1.005s          | ~0ms             |
+| Total test time           | ~1.005s          | ~100ms           |
+| fast[0]                   | 0ms              | 0ms              |
+| fast[5]                   | ~503ms           | 0ms              |
+| fast[9]                   | ~905ms           | 0ms              |
+| Slow client blocks others | ✅ Yes           | ❌ No            |
 
 > [!IMPORTANT]
 > The key improvement is not just lower benchmark time — it is that **the latency of one WebSocket connection no longer propagates to unrelated connections**.
@@ -220,6 +224,7 @@ User 1001
 ```
 
 This allows the server to:
+
 - Send a message to **all devices** of a user
 - Send to **specific devices** while excluding the originating device
 - Determine if a user is truly **offline** (only when the last connected device disconnects)
@@ -276,10 +281,11 @@ Internal service communication uses **Mutual TLS (mTLS)**. Unlike regular TLS, b
 ```
 
 Each connection provides:
--  **Encryption** — data in transit is secure
--  **Server authentication** — client verifies server identity
--  **Client authentication** — server verifies client identity
--  **Service identity** — services cannot impersonate each other
+
+- **Encryption** — data in transit is secure
+- **Server authentication** — client verifies server identity
+- **Client authentication** — server verifies client identity
+- **Service identity** — services cannot impersonate each other
 
 This prevents services from blindly trusting any client that can reach the internal network endpoint.
 
@@ -306,10 +312,10 @@ Service Identity
 
 A service may be authenticated successfully through mTLS but still be **denied access** to a specific RPC method if its role does not have the required permission.
 
-| Layer | Question |
-|---|---|
-| **mTLS** | *"Who are you?"* |
-| **RBAC** | *"What are you allowed to do?"* |
+| Layer    | Question                        |
+| -------- | ------------------------------- |
+| **mTLS** | _"Who are you?"_                |
+| **RBAC** | _"What are you allowed to do?"_ |
 
 This separation is important because authenticating a service does not mean it should have unrestricted access to every other service.
 
@@ -389,36 +395,42 @@ This provides a **separate delivery path** for devices not currently connected t
 
 ---
 
-##  Project Scope & Learning Objectives
+## Project Scope & Learning Objectives
 
 This project focuses on **learning and implementing** core backend engineering concepts in practice:
 
 **Service Design**
+
 - Designing services around business domains
 - RESTful API design
 - gRPC service-to-service communication
 
 **Real-time & Connection Management**
+
 - WebSocket connection management
 - Multi-device session management
 - Avoiding head-of-line blocking in real-time message delivery
 - Designing a WebSocket layer that can scale horizontally
 
 **Data & Messaging**
+
 - Redis caching and Pub/Sub
 - PostgreSQL database design
 
 **Security & Authorization**
+
 - Service-to-service authentication with mTLS
 - Service authorization with RBAC
 - Authentication and session management
 
 **Cloud & Async Processing**
+
 - Event-driven processing with Cloud Functions
 - Automated image content moderation
 - Push notifications with Firebase Cloud Messaging
 
 **Go & Concurrency**
+
 - Concurrency and goroutine-based processing in Go
 
 > [!IMPORTANT]
